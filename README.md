@@ -39,7 +39,7 @@ Live ticker updates connect directly from the browser to Binance's public WebSoc
 - `GET /api/pairs?query=BTC&limit=20`
 - `GET /api/exchange-info?query=BTC&limit=20`
 - `GET /api/ticker/price?symbol=BTCUSDT`
-- `GET /api/ticker/24hr?symbol=BTCUSDT`
+- `GET /api/ticker-24hr?symbol=BTCUSDT`
 - `GET /api/klines?symbol=BTCUSDT&interval=4h&limit=200`
 - `GET /api/market-snapshot?symbol=BTCUSDT&limit=200`
 

@@ -75,7 +75,7 @@ async function route(url: URL): Promise<unknown> {
     return service.getTickerPrice(readSymbol(url));
   }
 
-  if (url.pathname === '/api/ticker/24hr') {
+  if (url.pathname === '/api/ticker-24hr') {
     return service.getTicker24Hour(readSymbol(url));
   }
 

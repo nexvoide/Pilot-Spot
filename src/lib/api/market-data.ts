@@ -122,7 +122,7 @@ export async function fetchMarketSnapshot(
 }
 
 export async function fetchMarketTicker(symbol: string): Promise<MarketTicker> {
-  const response = await requestJson('/api/ticker/24hr', { symbol: symbol.trim().toUpperCase() });
+  const response = await requestJson('/api/ticker-24hr', { symbol: symbol.trim().toUpperCase() });
   const parsed = ticker24HourResponseSchema.safeParse(response);
 
   if (!parsed.success) {
