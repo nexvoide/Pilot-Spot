@@ -78,6 +78,8 @@ export function CapitalSetupPage() {
           <span aria-hidden="true">$</span>
           <input
             id="setup-capital"
+            aria-invalid={error !== null}
+            aria-describedby={error ? 'setup-capital-error' : undefined}
             inputMode="decimal"
             onChange={(event) => {
               setError(null);
@@ -90,7 +92,7 @@ export function CapitalSetupPage() {
           <span className="capital-input-unit">USDT</span>
         </div>
         {error && (
-          <p className="terminal-error" role="alert">
+          <p id="setup-capital-error" className="terminal-error" role="alert">
             {error}
           </p>
         )}

@@ -59,7 +59,7 @@ async function route(url) {
     if (url.pathname === '/api/ticker/price') {
         return service.getTickerPrice(readSymbol(url));
     }
-    if (url.pathname === '/api/ticker/24hr') {
+    if (url.pathname === '/api/ticker-24hr') {
         return service.getTicker24Hour(readSymbol(url));
     }
     if (url.pathname === '/api/klines') {

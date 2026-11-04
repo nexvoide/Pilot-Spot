@@ -1,10 +1,11 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { useCapitalSettings } from '@/features/capital-settings/context';
 import { useMarketConnection } from '@/features/market-data/useMarketConnection';
 
 const navigationItems = [
   { label: 'Setup capital', to: '/setup-capital' },
   { label: 'Coins dashboard', to: '/coins' },
+  { label: 'Crypto news', to: '/news' },
   { label: 'Extra tools', to: '/calculators/average-buy' },
 ] as const;
 
@@ -32,20 +33,20 @@ function connectionLabel(status: ReturnType<typeof useMarketConnection>): string
 export function AppShell() {
   const { globalCapital } = useCapitalSettings();
   const connection = useMarketConnection();
+  const { pathname } = useLocation();
 
   return (
     <div className="app-shell">
+      <a className="skip-link" href="#main-content">Skip to content</a>
       <header className="app-header">
         <NavLink className="brand" to="/" aria-label="Spot Ladder Analyzer home">
-          <span className="brand-mark" aria-hidden="true">
-            ↗
-          </span>
+          <img className="brand-mark" src="/spot-ladder-logo.png" alt="" />
           <span>Spot Ladder</span>
         </NavLink>
         <nav aria-label="Primary navigation" className="app-navigation">
           {navigationItems.map((item) => (
             <NavLink
-              className={({ isActive }) => `app-navigation-link${isActive ? ' is-active' : ''}`}
+              className={({ isActive }) => `app-navigation-link${isActive || (item.to === '/coins' && pathname.startsWith('/analysis')) || (item.to === '/calculators/average-buy' && pathname.startsWith('/calculators/')) ? ' is-active' : ''}`}
               key={item.label}
               to={item.to}
             >
@@ -63,12 +64,12 @@ export function AppShell() {
           </span>
           <NavLink className="capital-chip" to="/setup-capital">
             <span>Capital</span>
-            <strong>${formatCapital(globalCapital)}</strong>
+            <strong>{globalCapital === null ? formatCapital(globalCapital) : `$${formatCapital(globalCapital)}`}</strong>
             {globalCapital !== null && <em>USDT</em>}
           </NavLink>
         </div>
       </header>
-      <main className="app-main">
+      <main className="app-main" id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
       <footer className="app-footer">

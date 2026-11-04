@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { analyzeMarket } from '@/lib/analysis/assessment';
@@ -292,6 +292,12 @@ export function DashboardPage() {
               Live Binance public data, market context, and hypothetical levels—kept separate from
               execution.
             </p>
+            {capitalValue === null && (
+              <div className="setup-callout">
+                <div><strong>Start with your planning capital</strong><span>Set an amount to calculate buying and take-profit levels.</span></div>
+                <Link to="/setup-capital">Set capital <span aria-hidden="true">→</span></Link>
+              </div>
+            )}
           </section>
 
           <section className="default-market-section" aria-labelledby="market-list-title">
@@ -309,6 +315,8 @@ export function DashboardPage() {
                     <input
                       id="pair-search"
                       autoComplete="off"
+                      aria-invalid={pairError !== null}
+                      aria-describedby={pairError ? 'pair-search-error' : undefined}
                       onChange={(event) => {
                         setPairError(null);
                         setPairQuery(event.target.value);
@@ -368,7 +376,7 @@ export function DashboardPage() {
                                 {ticker
                                   ? `${formatPrice(ticker.price)} USDT`
                                   : online
-                                    ? 'Loading price…'
+                                    ? query?.isError ? 'Price unavailable' : 'Loading price…'
                                     : 'Offline'}
                               </b>
                               <small
@@ -392,7 +400,7 @@ export function DashboardPage() {
                   </ul>
                 )}
                 {pairError && (
-                  <p className="field-error market-search-feedback" role="alert">
+                  <p id="pair-search-error" className="field-error market-search-feedback" role="alert">
                     {pairError}
                   </p>
                 )}
@@ -440,7 +448,7 @@ export function DashboardPage() {
                         {ticker
                           ? `${formatPrice(ticker.price)} USDT`
                           : online
-                            ? 'Loading…'
+                            ? query?.isError ? 'Unavailable' : 'Loading…'
                             : 'Offline'}
                       </span>
                       <span
@@ -476,6 +484,10 @@ export function DashboardPage() {
 
       {isAnalysisPage && (
         <>
+          <div className="analysis-toolbar">
+            <Link to="/coins" className="analysis-back">← All markets</Link>
+            <Link to="/setup-capital" className="analysis-settings">{capitalValue === null ? 'Set planning capital' : 'Edit planning capital'} <span aria-hidden="true">↗</span></Link>
+          </div>
           <section className="analysis-status" aria-live="polite" aria-labelledby="analysis-title">
             <div className="status-icon" aria-hidden="true">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -586,7 +598,11 @@ export function DashboardPage() {
               <p className="card-description">
                 {technicalLadder?.reason ??
                   (!displayTechnicalLadder
-                    ? 'Live price crossed a level or moved materially. Revalidating the plan…'
+                    ? capitalValue === null
+                      ? 'Set your planning capital to calculate buying levels.'
+                      : !livePriceIsCurrent
+                        ? 'Waiting for a current live price to show your buying levels.'
+                        : 'Revalidating your plan against the latest price…'
                     : 'Four equal 25% hypothetical buying limits are prepared from support, structure, and volatility.')}
               </p>
               <ol className="level-list">
@@ -683,7 +699,11 @@ export function DashboardPage() {
               <p className="card-description">
                 {technicalLadder?.reason ??
                   (!displayTechnicalLadder
-                    ? 'Live price crossed a level or moved materially. Revalidating the plan…'
+                    ? capitalValue === null
+                      ? 'Set your planning capital to calculate take-profit targets.'
+                      : !livePriceIsCurrent
+                        ? 'Waiting for a current live price to show your take-profit targets.'
+                        : 'Revalidating your plan against the latest price…'
                     : 'Four hypothetical targets are prepared from resistance, risk/reward, and volatility.')}
               </p>
               <ol className="level-list">

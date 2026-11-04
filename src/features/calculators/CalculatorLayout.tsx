@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
 
 interface CalculatorLayoutProps extends PropsWithChildren {
   compact?: boolean;
@@ -18,9 +18,17 @@ export function CalculatorLayout({
       aria-labelledby={compact ? undefined : 'calculator-page-title'}
       className={`calculator-page${compact ? ' calculator-page-compact' : ''}`}
     >
-      <Link className="back-link" to="/">
-        ← Back to analysis
+      <Link className="back-link" to="/coins">
+        ← Back to markets
       </Link>
+      <nav className="calculator-tabs" aria-label="Calculators">
+        <NavLink to="/calculators/average-buy" className={({ isActive }) => `calculator-tab${isActive ? ' is-active' : ''}`}>
+          Average buy
+        </NavLink>
+        <NavLink to="/calculators/profit" className={({ isActive }) => `calculator-tab${isActive ? ' is-active' : ''}`}>
+          Profit estimate
+        </NavLink>
+      </nav>
       {!compact && (
         <>
           <p className="eyebrow">Independent calculator</p>

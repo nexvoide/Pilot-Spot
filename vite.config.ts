@@ -9,19 +9,19 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      includeAssets: ['icon.svg', 'apple-touch-icon.png'],
+      includeAssets: ['spot-ladder-logo.png', 'spot-ladder-apple.png'],
       manifest: {
         background_color: '#0f131c',
         display: 'standalone',
         icons: [
           {
             sizes: '192x192',
-            src: '/pwa-192.png',
+            src: '/spot-ladder-192.png',
             type: 'image/png',
           },
           {
             sizes: '512x512',
-            src: '/pwa-512.png',
+            src: '/spot-ladder-512.png',
             type: 'image/png',
           },
         ],

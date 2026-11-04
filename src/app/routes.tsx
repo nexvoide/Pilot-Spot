@@ -5,6 +5,7 @@ import { ProfitCalculatorPage } from '@/features/calculators/ProfitCalculatorPag
 import { CapitalSetupPage } from '@/features/capital-settings/CapitalSetupPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { NotFoundPage } from '@/features/foundation/NotFoundPage';
+import { CryptoNewsPage } from '@/features/news/CryptoNewsPage';
 
 export function AppRouter() {
   return (
@@ -14,6 +15,7 @@ export function AppRouter() {
           <Route index element={<DashboardPage />} />
           <Route path="setup-capital" element={<CapitalSetupPage />} />
           <Route path="coins" element={<DashboardPage />} />
+          <Route path="news" element={<CryptoNewsPage />} />
           <Route path="analysis" element={<DashboardPage />} />
           <Route path="analysis/:symbol" element={<DashboardPage />} />
           <Route path="calculators/average-buy" element={<AverageBuyCalculatorPage />} />
