@@ -22,6 +22,11 @@ describe('storage helpers', () => {
       applicationPreferencesSchema.parse({ version: 1, globalCapital: 1000 }).globalCapital,
     ).toBe('1000');
   });
+  it('preserves capital when reading old or invalid mode settings', () => {
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000' })).toMatchObject({ globalCapital: '1000', ladderMode: 'balanced' });
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'unknown' })).toMatchObject({ globalCapital: '1000', ladderMode: 'balanced' });
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'extended' }).ladderMode).toBe('extended');
+  });
   it('round-trips JSON through a storage adapter', () => {
     const storage = createStorage();
 

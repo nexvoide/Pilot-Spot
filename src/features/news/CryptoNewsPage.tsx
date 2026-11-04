@@ -8,17 +8,37 @@ const newsResponseSchema = z.object({
       link: z.string().url(),
       source: z.string().trim().min(1),
       pubDate: z.string().optional(),
+      description: z.string().nullish(),
     }),
   ),
 });
 
+const cryptoTerms = /\b(?:crypto(?:currency|currencies)?|bitcoin|btc|ethereum|ether|eth|solana|sol|blockchain|web3|defi|stablecoins?|altcoins?|binance|coinbase|tokens?|on[- ]chain|xrp|ripple|dogecoin|doge|cardano|avalanche|polygon|chainlink|litecoin|sui|usdt|usdc|nfts?|decentralized finance)\b/i;
+const newsCategories = ['bitcoin', 'ethereum', 'solana', 'defi'] as const;
+
 async function fetchNews(signal: AbortSignal) {
-  const response = await fetch('https://cryptocurrency.cv/api/news?limit=20', { signal });
-  if (!response.ok) throw new Error('Unable to load crypto news.');
-  const parsed = newsResponseSchema.parse(await response.json());
-  return parsed.articles.filter((article) => {
-    const url = new URL(article.link);
-    return url.protocol === 'https:' || url.protocol === 'http:';
+  const results = await Promise.allSettled(newsCategories.map(async (category) => {
+    const response = await fetch(`https://cryptocurrency.cv/api/news?category=${category}&limit=20`, { signal });
+    if (!response.ok) throw new Error('Unable to load crypto news.');
+    return newsResponseSchema.parse(await response.json()).articles;
+  }));
+  if (signal.aborted) throw new DOMException('Request cancelled.', 'AbortError');
+  const succeeded = results.filter((result) => result.status === 'fulfilled');
+  if (succeeded.length === 0) throw new Error('Unable to load crypto news.');
+
+  const unique = new Map<string, z.infer<typeof newsResponseSchema>['articles'][number]>();
+  for (const result of succeeded) {
+    for (const article of result.value) {
+      const url = new URL(article.link);
+      if ((url.protocol === 'https:' || url.protocol === 'http:') && cryptoTerms.test(`${article.title} ${article.description ?? ''}`)) {
+        unique.set(article.link, article);
+      }
+    }
+  }
+  return [...unique.values()].sort((a, b) => {
+    const left = Date.parse(a.pubDate ?? '');
+    const right = Date.parse(b.pubDate ?? '');
+    return (Number.isFinite(right) ? right : 0) - (Number.isFinite(left) ? left : 0);
   });
 }
 

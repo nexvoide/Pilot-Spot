@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { vi } from 'vitest';
+import { beforeEach, vi } from 'vitest';
 import { App } from '@/app/App';
 import { AppProviders } from '@/app/providers';
 
@@ -35,6 +35,22 @@ vi.mock('@/features/market-data/useMarketConnection', () => ({
 }));
 
 describe('App', () => {
+  beforeEach(() => {
+    window.localStorage.clear();
+    window.history.pushState({}, '', '/');
+  });
+  it('offers capital setup instead of showing loading ladders when capital is not set', () => {
+    render(
+      <AppProviders>
+        <App />
+      </AppProviders>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /open sui analysis/i }));
+    expect(screen.getAllByText('Capital needed')).toHaveLength(2);
+    expect(screen.getAllByRole('link', { name: /set planning capital/i })).toHaveLength(2);
+    expect(screen.queryByRole('list', { name: /buying levels/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: /take-profit targets/i })).not.toBeInTheDocument();
+  });
   it('renders the application foundation', () => {
     render(
       <AppProviders>

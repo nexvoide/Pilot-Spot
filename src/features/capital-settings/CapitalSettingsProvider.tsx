@@ -6,6 +6,7 @@ import {
   type ApplicationPreferences,
 } from '@/lib/persistence/schemas';
 import { getBrowserStorage, readJson, writeJson } from '@/lib/persistence/storage';
+import type { LadderMode } from '@/lib/calculations/ladders';
 
 const PREFERENCES_STORAGE_KEY = 'spot-ladder-analyzer:preferences';
 
@@ -31,9 +32,13 @@ export function CapitalSettingsProvider({ children }: PropsWithChildren) {
     setPreferences((current) => ({ ...current, globalCapital }));
   }
 
+  function setLadderMode(ladderMode: LadderMode) {
+    setPreferences((current) => ({ ...current, ladderMode }));
+  }
+
   return (
     <CapitalSettingsContext.Provider
-      value={{ globalCapital: preferences.globalCapital, setGlobalCapital }}
+      value={{ globalCapital: preferences.globalCapital, ladderMode: preferences.ladderMode, setGlobalCapital, setLadderMode }}
     >
       {children}
     </CapitalSettingsContext.Provider>

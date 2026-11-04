@@ -1,7 +1,10 @@
 import { createContext, useContext } from 'react';
+import type { LadderMode } from '@/lib/calculations/ladders';
 
 export interface CapitalSettingsContextValue {
   globalCapital: string | null;
+  ladderMode: LadderMode;
+  setLadderMode: (mode: LadderMode) => void;
   setGlobalCapital: (capital: string | null) => void;
 }
 

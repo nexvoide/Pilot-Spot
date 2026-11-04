@@ -3,10 +3,10 @@ import { useCapitalSettings } from '@/features/capital-settings/context';
 import { useMarketConnection } from '@/features/market-data/useMarketConnection';
 
 const navigationItems = [
-  { label: 'Setup capital', to: '/setup-capital' },
-  { label: 'Coins dashboard', to: '/coins' },
-  { label: 'Crypto news', to: '/news' },
-  { label: 'Extra tools', to: '/calculators/average-buy' },
+  { label: 'Setup capital', shortLabel: 'Capital', to: '/setup-capital' },
+  { label: 'Coins dashboard', shortLabel: 'Markets', to: '/coins' },
+  { label: 'Crypto news', shortLabel: 'News', to: '/news' },
+  { label: 'Extra tools', shortLabel: 'Tools', to: '/calculators/average-buy' },
 ] as const;
 
 function formatCapital(capital: string | null): string {
@@ -49,8 +49,10 @@ export function AppShell() {
               className={({ isActive }) => `app-navigation-link${isActive || (item.to === '/coins' && pathname.startsWith('/analysis')) || (item.to === '/calculators/average-buy' && pathname.startsWith('/calculators/')) ? ' is-active' : ''}`}
               key={item.label}
               to={item.to}
+              aria-label={item.label}
             >
-              {item.label}
+              <span className="navigation-label-full">{item.label}</span>
+              <span className="navigation-label-short" aria-hidden="true">{item.shortLabel}</span>
             </NavLink>
           ))}
         </nav>

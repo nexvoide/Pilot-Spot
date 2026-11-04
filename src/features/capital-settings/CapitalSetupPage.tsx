@@ -21,7 +21,7 @@ function parseCapital(value: string): string | null {
 }
 
 export function CapitalSetupPage() {
-  const { globalCapital, setGlobalCapital } = useCapitalSettings();
+  const { globalCapital, setGlobalCapital, ladderMode, setLadderMode } = useCapitalSettings();
   const [value, setValue] = useState(() => (globalCapital ? formatCapital(globalCapital) : ''));
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -56,8 +56,8 @@ export function CapitalSetupPage() {
         </p>
         <h1 id="capital-setup-title">Your trading plan, made simple.</h1>
         <p>
-          Set your spot capital once. It is reused to calculate hypothetical buying ladders and
-          take-profit targets as you explore coins.
+          Set your spot capital and choose how closely the hypothetical buying and take-profit
+          levels are spaced.
         </p>
       </div>
 
@@ -109,6 +109,24 @@ export function CapitalSetupPage() {
             </button>
           ))}
         </div>
+
+        <fieldset className="ladder-modes capital-planning-modes">
+          <legend>Buying and take-profit mode</legend>
+          <p>Choose the spacing for both ladders. Your selection is saved in this browser.</p>
+          <div className="ladder-mode-options">
+            {([
+              ['aggressive', 'Aggressive', 'Closer levels'],
+              ['balanced', 'Balanced', 'Moderate spacing'],
+              ['extended', 'Extended', 'Wider spacing'],
+            ] as const).map(([mode, label, description]) => (
+              <label className={`ladder-mode-option${ladderMode === mode ? ' is-selected' : ''}`} key={mode}>
+                <input type="radio" name="ladder-mode" value={mode} checked={ladderMode === mode} onChange={() => setLadderMode(mode)} />
+                <span><strong>{label}</strong><small>{description}</small></span>
+              </label>
+            ))}
+          </div>
+          <small>All modes use the same market analysis. Levels and profits are not guaranteed.</small>
+        </fieldset>
 
         <button className="terminal-primary-button capital-confirm-button" type="submit">
           Confirm &amp; continue to dashboard <span aria-hidden="true">→</span>

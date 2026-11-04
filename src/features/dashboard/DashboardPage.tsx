@@ -57,7 +57,7 @@ export function DashboardPage() {
   const marketSnapshotQuery = useMarketSnapshot(submittedPair);
   const snapshotAsOf = marketSnapshotQuery.data?.asOf;
   const snapshotCurrentPrice = marketSnapshotQuery.data?.currentPrice;
-  const { globalCapital } = useCapitalSettings();
+  const { globalCapital, ladderMode } = useCapitalSettings();
   const updateSelectedMarketPrice = useCallback(({ price }: { price: number }) => {
     setLivePrice(price);
   }, []);
@@ -150,6 +150,7 @@ export function DashboardPage() {
       capitalValue,
       validatedCurrentPrice,
       marketSnapshotQuery.data?.filters ?? null,
+      ladderMode,
     );
   }, [
     capitalValue,
@@ -157,6 +158,7 @@ export function DashboardPage() {
     marketSnapshotQuery.data?.filters,
     technicalAnalysis,
     technicalReferencePrice,
+    ladderMode,
   ]);
   const liveLadderValidation = useMemo(
     () => validateLadderAgainstLivePrice(technicalLadder, livePrice),
@@ -217,6 +219,15 @@ export function DashboardPage() {
     livePriceIsCurrent && !ladderRecalculationPending && liveLadderValidation.valid
       ? technicalLadder
       : null;
+  const ladderIsLoading = capitalValue !== null && !marketSnapshotQuery.isError &&
+    !technicalLadder?.reason && (marketSnapshotQuery.isLoading || ladderRecalculationPending);
+  const ladderBadge = capitalValue === null
+    ? 'Capital needed'
+    : marketSnapshotQuery.isError || technicalLadder?.reason
+      ? 'Data unavailable'
+      : displayTechnicalLadder
+        ? `${displayTechnicalLadder.confidence} confidence`
+        : ladderIsLoading ? 'Updating' : 'Waiting for live price';
   const marketCondition = useMemo(
     () => (technicalAnalysis ? describeMarketCondition(technicalAnalysis) : null),
     [technicalAnalysis],
@@ -280,6 +291,7 @@ export function DashboardPage() {
     setSubmittedPair(symbol);
     navigate(`/analysis/${symbol}`);
   }
+
 
   return (
     <div className={isAnalysisPage ? 'coin-analysis-page' : 'dashboard'}>
@@ -486,7 +498,7 @@ export function DashboardPage() {
         <>
           <div className="analysis-toolbar">
             <Link to="/coins" className="analysis-back">← All markets</Link>
-            <Link to="/setup-capital" className="analysis-settings">{capitalValue === null ? 'Set planning capital' : 'Edit planning capital'} <span aria-hidden="true">↗</span></Link>
+            <Link to="/setup-capital" className="analysis-settings">{capitalValue === null ? 'Set capital & mode' : `Capital & mode · ${ladderMode[0].toUpperCase()}${ladderMode.slice(1)}`} <span aria-hidden="true">↗</span></Link>
           </div>
           <section className="analysis-status" aria-live="polite" aria-labelledby="analysis-title">
             <div className="status-icon" aria-hidden="true">
@@ -588,11 +600,7 @@ export function DashboardPage() {
                   <h2>Buying ladder</h2>
                 </div>
                 <span className="pending-badge">
-                  {technicalLadder?.reason
-                    ? 'Data unavailable'
-                    : displayTechnicalLadder
-                      ? `${displayTechnicalLadder.confidence} confidence`
-                      : 'Needs recalculation'}
+                  {ladderBadge}
                 </span>
               </div>
               <p className="card-description">
@@ -600,12 +608,15 @@ export function DashboardPage() {
                   (!displayTechnicalLadder
                     ? capitalValue === null
                       ? 'Set your planning capital to calculate buying levels.'
+                      : marketSnapshotQuery.isError
+                        ? 'Market data could not be loaded. Retry using the button above.'
                       : !livePriceIsCurrent
                         ? 'Waiting for a current live price to show your buying levels.'
                         : 'Revalidating your plan against the latest price…'
                     : 'Four equal 25% hypothetical buying limits are prepared from support, structure, and volatility.')}
               </p>
-              <ol className="level-list">
+              {capitalValue === null && <Link className="ladder-setup-link" to="/setup-capital">Set planning capital <span aria-hidden="true">→</span></Link>}
+              {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Buying levels" aria-busy={ladderIsLoading}>
                 {displayTechnicalLadder && displayTechnicalLadder.buyingLevels.length > 0
                   ? displayTechnicalLadder.buyingLevels.map((level, index) => (
                       <li key={level.price} data-quantity={level.quantity}>
@@ -630,7 +641,7 @@ export function DashboardPage() {
                         <span className="level-placeholder level-placeholder-short" />
                       </li>
                     ))}
-              </ol>
+              </ol>}
               {displayTechnicalLadder?.buyingSummary && (
                 <dl className="ladder-summary">
                   <div>
@@ -689,11 +700,7 @@ export function DashboardPage() {
                   <h2>Take-profit ladder</h2>
                 </div>
                 <span className="pending-badge">
-                  {technicalLadder?.reason
-                    ? 'Data unavailable'
-                    : displayTechnicalLadder
-                      ? `${displayTechnicalLadder.confidence} confidence`
-                      : 'Needs recalculation'}
+                  {ladderBadge}
                 </span>
               </div>
               <p className="card-description">
@@ -701,12 +708,15 @@ export function DashboardPage() {
                   (!displayTechnicalLadder
                     ? capitalValue === null
                       ? 'Set your planning capital to calculate take-profit targets.'
+                      : marketSnapshotQuery.isError
+                        ? 'Market data could not be loaded. Retry using the button above.'
                       : !livePriceIsCurrent
                         ? 'Waiting for a current live price to show your take-profit targets.'
                         : 'Revalidating your plan against the latest price…'
                     : 'Four hypothetical targets are prepared from resistance, risk/reward, and volatility.')}
               </p>
-              <ol className="level-list">
+              {capitalValue === null && <Link className="ladder-setup-link" to="/setup-capital">Set planning capital <span aria-hidden="true">→</span></Link>}
+              {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Take-profit targets" aria-busy={ladderIsLoading}>
                 {displayTechnicalLadder && displayTechnicalLadder.takeProfitTargets.length > 0
                   ? displayTechnicalLadder.takeProfitTargets.map((target, index) => (
                       <li key={target.price} data-quantity={target.quantity}>
@@ -719,7 +729,7 @@ export function DashboardPage() {
                           USDT
                         </span>
                         <span className="level-allocation target-allocation">
-                          <span>{target.allocationPercent}% planned sell</span>
+                          <span>{target.allocationPercent}% planned sell{target.estimated ? ' · Estimated' : ''}</span>
                           <strong>
                             {target.outcome === 'profit' ? 'Est. net ' : 'Recovery estimate '}
                             {formatCurrency(target.estimatedNetProfit)}
@@ -734,7 +744,7 @@ export function DashboardPage() {
                         <span className="level-placeholder level-placeholder-short" />
                       </li>
                     ))}
-              </ol>
+              </ol>}
               {displayTechnicalLadder?.takeProfitSummary && (
                 <dl className="ladder-summary">
                   <div>

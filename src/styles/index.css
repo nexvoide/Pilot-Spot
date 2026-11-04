@@ -2730,3 +2730,32 @@ body { -webkit-tap-highlight-color: transparent; }
   .analysis-back, .analysis-settings { font-size: 0.75rem; }
   .calculator-tabs { margin-top: 1rem; }
 }
+
+.ladder-modes { min-width: 0; margin: 0; padding: 1.25rem; border: 1px solid #293853; border-radius: 1rem; background: #151c28; }
+.ladder-modes legend { padding: 0 0.4rem; color: #f1f4fc; font-weight: 700; }
+.ladder-modes > p { margin: 0 0 1rem; color: #b3bfd3; font-size: 0.85rem; line-height: 1.5; }
+.ladder-modes > small { display: block; margin-top: 0.85rem; color: #9aa9bf; line-height: 1.5; }
+.ladder-mode-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.65rem; }
+.ladder-mode-option { display: flex; align-items: center; gap: 0.65rem; min-height: 4.3rem; padding: 0.75rem; border: 1px solid #35435b; border-radius: 0.75rem; background: #101724; cursor: pointer; }
+.ladder-mode-option.is-selected { border-color: #8baaff; background: #22324c; }
+.ladder-mode-option input { flex: 0 0 auto; accent-color: #8baaff; }
+.ladder-mode-option span { display: grid; gap: 0.25rem; }
+.ladder-mode-option strong { color: #f0f4ff; font-size: 0.85rem; }
+.ladder-mode-option small { color: #aebcd2; font-size: 0.75rem; }
+@media (max-width: 35rem) { .ladder-mode-options { grid-template-columns: 1fr; } .ladder-mode-option { min-height: 3.5rem; } }
+.capital-planning-modes { margin: 1.5rem 0; }
+
+.navigation-label-short { display: none; }
+.ladder-setup-link { display: inline-flex; align-items: center; gap: 0.5rem; min-height: 2.75rem; margin-top: 1rem; padding: 0.65rem 0.9rem; border: 1px solid #496496; border-radius: 0.65rem; background: #253856; color: #e7efff; font-size: 0.85rem; font-weight: 700; text-decoration: none; }
+.ladder-setup-link:hover { background: #30496d; }
+@media (max-width: 47.99rem) {
+  .app-navigation { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; margin: 0; padding: 0.15rem 0 0.55rem; gap: 0.2rem; overflow: visible; }
+  .app-navigation-link { min-width: 0; justify-content: center; padding: 0.55rem 0.25rem; font-size: 0.75rem; }
+  .navigation-label-full { display: none; }
+  .navigation-label-short { display: inline; }
+  .coin-analysis-page .card-title-row { flex-wrap: wrap; }
+  .coin-analysis-page .level-list li { grid-template-columns: 3rem minmax(0, 1fr); }
+  .coin-analysis-page .level-list .level-placeholder { grid-column: 2; width: 100%; }
+  .coin-analysis-page .level-list .level-placeholder-short { grid-column: 2; width: 35%; justify-self: start; }
+  .coin-analysis-page .level-price, .coin-analysis-page .level-allocation { min-width: 0; overflow-wrap: anywhere; }
+}

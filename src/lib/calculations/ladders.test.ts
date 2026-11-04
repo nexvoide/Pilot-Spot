@@ -105,6 +105,81 @@ function expectCompletePlan(ladder: ReturnType<typeof buildTechnicalLadder>) {
 }
 
 describe('buildTechnicalLadder', () => {
+  it('changes both buy and sell prices across modes when technical zones are present', () => {
+    const analysis = makeAnalysis('BUY SETUP DEVELOPING');
+    const modes = (['aggressive', 'balanced', 'extended'] as const).map((mode) =>
+      buildTechnicalLadder(analysis, 1000, 100, undefined, mode),
+    );
+    for (const ladder of modes) expectCompletePlan(ladder);
+    expect(new Set(modes.map((ladder) => ladder.buyingLevels.map((level) => level.price).join(','))).size).toBe(3);
+    expect(new Set(modes.map((ladder) => ladder.takeProfitTargets.map((level) => level.price).join(','))).size).toBe(3);
+    expect(modes[0].buyingLevels[3].price).toBeGreaterThan(modes[1].buyingLevels[3].price);
+    expect(modes[1].buyingLevels[3].price).toBeGreaterThan(modes[2].buyingLevels[3].price);
+  });
+  it('adjusts estimated buy and target spacing across the three planning modes', () => {
+    const primary = timeframe({
+      atr: 1,
+      candles: candlesWithRange(94, 106),
+      zones: [],
+      ema: { ema7: null, ema20: null, ema50: null },
+    });
+    const analysis = makeAnalysis('NO RELIABLE SETUP', {
+      timeframes: { '15m': primary, '1h': primary, '4h': primary },
+    });
+    const aggressive = buildTechnicalLadder(analysis, 1000, 100, undefined, 'aggressive');
+    const balanced = buildTechnicalLadder(analysis, 1000, 100, undefined, 'balanced');
+    const extended = buildTechnicalLadder(analysis, 1000, 100, undefined, 'extended');
+    for (const ladder of [aggressive, balanced, extended]) expectCompletePlan(ladder);
+    expect(aggressive.buyingLevels[0].price).toBeCloseTo(100 - 1.44 * 0.65 * 0.55, 8);
+    expect(aggressive.buyingLevels[3].price).toBeCloseTo(100 - 1.44 * 0.65 * 4.2, 8);
+    expect(balanced.buyingLevels[3].price).toBeCloseTo(100 - 1.44 * 4.7, 8);
+    expect(extended.buyingLevels[3].price).toBeCloseTo(100 - 1.44 * 1.4 * 5.2, 8);
+    expect(aggressive.buyingLevels[3].price).toBeGreaterThan(balanced.buyingLevels[3].price);
+    expect(balanced.buyingLevels[3].price).toBeGreaterThan(extended.buyingLevels[3].price);
+    expect(aggressive.takeProfitTargets[3].price).toBeLessThan(balanced.takeProfitTargets[3].price);
+    expect(balanced.takeProfitTargets[3].price).toBeLessThan(extended.takeProfitTargets[3].price);
+    expect(aggressive.takeProfitTargets[0].price).toBeCloseTo(100.468, 8);
+    expect(balanced.takeProfitTargets[0].price).toBeCloseTo(100.72, 8);
+    extended.buyingLevels.forEach((level, index) => {
+      expect(100 - level.price).toBeCloseTo(extended.takeProfitTargets[index].price - 100, 8);
+    });
+  });
+  it('keeps targets in a closer volatility-scaled range instead of choosing distant resistance', () => {
+    const primary = timeframe({
+      atr: 1,
+      candles: candlesWithRange(94, 106),
+      zones: [
+        { kind: 'support', price: 98, touches: 3 },
+        { kind: 'resistance', price: 100.01, touches: 3 },
+        { kind: 'resistance', price: 130, touches: 4 },
+      ],
+    });
+    const analysis = makeAnalysis('NO RELIABLE SETUP', {
+      timeframes: { '15m': primary, '1h': primary, '4h': primary },
+    });
+    const ladder = buildTechnicalLadder(analysis, 1000, 100);
+    expectCompletePlan(ladder);
+    expect(ladder.takeProfitTargets[0].price).toBeGreaterThanOrEqual(100.3);
+    expect(ladder.takeProfitTargets[3].price).toBeLessThanOrEqual(104.2);
+    expect(ladder.takeProfitTargets.every((target) => target.estimated)).toBe(true);
+  });
+
+  it('uses resistance close to the projected targets when it is available', () => {
+    const primary = timeframe({
+      atr: 1,
+      candles: candlesWithRange(94, 106),
+      zones: [
+        { kind: 'support', price: 98, touches: 3 },
+        { kind: 'resistance', price: 100.74, touches: 3 },
+      ],
+    });
+    const analysis = makeAnalysis('NO RELIABLE SETUP', {
+      timeframes: { '15m': primary, '1h': primary, '4h': primary },
+    });
+    const ladder = buildTechnicalLadder(analysis, 1000, 100);
+    expect(ladder.reason).toBeNull();
+    expect(ladder.takeProfitTargets[0]).toMatchObject({ price: 100.74, estimated: false });
+  });
   it('fails safely when a very large order cannot be represented accurately for display', () => {
     const filters = {
       tickSize: '0.0001',

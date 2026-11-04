@@ -4,6 +4,7 @@ import Decimal from '@/lib/calculations/financial-decimal';
 export const PERSISTENCE_VERSION = 1;
 
 export const applicationPreferencesSchema = z.object({
+  ladderMode: z.enum(['aggressive', 'balanced', 'extended']).catch('balanced').default('balanced'),
   globalCapital: z
     .union([
       z
@@ -22,5 +23,6 @@ export type ApplicationPreferences = z.infer<typeof applicationPreferencesSchema
 
 export const defaultApplicationPreferences: ApplicationPreferences = {
   globalCapital: null,
+  ladderMode: 'balanced',
   version: PERSISTENCE_VERSION,
 };

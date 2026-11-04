@@ -99,17 +99,32 @@ const ESTIMATED_FEE_PERCENT = 0.1;
 const MAX_BUYING_LEVELS = 4;
 const MAX_TAKE_PROFIT_TARGETS = 4;
 const TAKE_PROFIT_ALLOCATION_PERCENTAGES = [20, 30, 30, 20] as const;
-const ESTIMATED_LEVEL_MULTIPLIERS = [0.9, 2.1, 3.5, 5.2, 7.2, 9.5];
+const EXTENDED_LEVEL_MULTIPLIERS = [0.9, 2.1, 3.5, 5.2] as const;
 const RECENT_RANGE_CANDLES = 96;
+
+export type LadderMode = 'aggressive' | 'balanced' | 'extended';
+
+const BUY_LEVEL_MULTIPLIERS: Record<LadderMode, readonly number[]> = {
+  aggressive: [0.55, 1.75, 3, 4.2],
+  balanced: [0.9, 2.1, 3.4, 4.7],
+  extended: EXTENDED_LEVEL_MULTIPLIERS,
+};
+
+const MODE_SPACING: Record<LadderMode, number> = {
+  aggressive: 0.65,
+  balanced: 1,
+  extended: 1.4,
+};
 
 export function buildTechnicalLadder(
   analysis: MultiTimeframeAnalysis,
   capital: Decimal.Value,
   referencePrice: number = analysis.timeframes['15m'].latestClose ?? Number.NaN,
   filters?: SymbolFilters | null,
+  mode: LadderMode = 'balanced',
 ): TechnicalLadder {
   try {
-    return buildTechnicalLadderInternal(analysis, capital, referencePrice, filters);
+    return buildTechnicalLadderInternal(analysis, capital, referencePrice, filters, mode);
   } catch {
     return emptyLadder('The exchange constraints could not be applied to this hypothetical plan.');
   }
@@ -120,6 +135,7 @@ function buildTechnicalLadderInternal(
   capital: Decimal.Value,
   referencePrice: number = analysis.timeframes['15m'].latestClose ?? Number.NaN,
   filters?: SymbolFilters | null,
+  mode: LadderMode = 'balanced',
 ): TechnicalLadder {
   if (filters === null)
     return emptyLadder(
@@ -145,8 +161,14 @@ function buildTechnicalLadderInternal(
     );
   }
 
-  const spacing = calculateAdaptiveSpacing(primary, currentPrice, atr);
-  let candidates = selectBuyingCandidates(analysis, currentPrice, spacing);
+  const baselineSpacing = calculateAdaptiveSpacing(primary, currentPrice, atr);
+  const modeMultiplier = MODE_SPACING[mode];
+  if (modeMultiplier === undefined) return emptyLadder('The selected planning mode is invalid.');
+  const spacing = baselineSpacing * modeMultiplier;
+  const targetSpacing = mode === 'extended'
+    ? spacing
+    : calculateTargetSpacing(currentPrice, baselineSpacing) * modeMultiplier;
+  let candidates = selectBuyingCandidates(analysis, currentPrice, spacing, mode);
   if (filters)
     candidates = candidates.map((candidate) => ({
       ...candidate,
@@ -173,7 +195,7 @@ function buildTechnicalLadderInternal(
     return emptyLadder('Reliable market data is insufficient to estimate the average entry price.');
   }
 
-  let targetCandidates = selectTargetCandidates(analysis, currentPrice, averageEntry, spacing);
+  let targetCandidates = selectTargetCandidates(analysis, currentPrice, averageEntry, targetSpacing, mode);
   if (filters)
     targetCandidates = targetCandidates.map((candidate) => ({
       ...candidate,
@@ -195,22 +217,29 @@ function buildTechnicalLadderInternal(
     (total, level) => total.plus(level.quantity),
     new Decimal(0),
   );
+  let remainingQuantity = totalQuantity;
   const targetQuantity = (index: number) => {
     const quantity = totalQuantity.mul(TAKE_PROFIT_ALLOCATION_PERCENTAGES[index]).div(100);
-    return filters ? quantizeQuantity(quantity, filters.stepSize) : quantity;
+    const available = Decimal.min(quantity, remainingQuantity);
+    const result = filters ? quantizeQuantity(available, filters.stepSize) : available;
+    remainingQuantity = remainingQuantity.minus(result);
+    return result;
   };
-  const takeProfitTargets = targetCandidates.map((target, index) => ({
-    allocationPercent: TAKE_PROFIT_ALLOCATION_PERCENTAGES[index],
-    classification: targetClassification(index),
-    estimated: target.estimated,
-    estimatedNetProfit: calculateNetProfit(targetQuantity(index), averageEntry, target.price),
-    movementPercent: target.price.minus(averageEntry).div(averageEntry).mul(100),
-    outcome: target.price.gt(averageEntry) ? ('profit' as const) : ('recovery' as const),
-    price: target.price,
-    quantity: targetQuantity(index),
-    reasons: target.reasons,
-    riskReward: calculateRiskReward(averageEntry, target.price, invalidation),
-  }));
+  const takeProfitTargets = targetCandidates.map((target, index) => {
+    const quantity = targetQuantity(index);
+    return {
+      allocationPercent: TAKE_PROFIT_ALLOCATION_PERCENTAGES[index],
+      classification: targetClassification(index),
+      estimated: target.estimated,
+      estimatedNetProfit: calculateNetProfit(quantity, averageEntry, target.price),
+      movementPercent: target.price.minus(averageEntry).div(averageEntry).mul(100),
+      outcome: target.price.gt(averageEntry) ? ('profit' as const) : ('recovery' as const),
+      price: target.price,
+      quantity,
+      reasons: target.reasons,
+      riskReward: calculateRiskReward(averageEntry, target.price, invalidation),
+    };
+  });
   if (filters) {
     const invalid = takeProfitTargets
       .map((target) => validateOrder(target.price, target.quantity, filters))
@@ -239,7 +268,7 @@ function buildTechnicalLadderInternal(
     takeProfitTargets,
   };
 
-  return validateTechnicalLadder(ladder, currentPrice, capital, spacing, filters != null);
+  return validateTechnicalLadder(ladder, currentPrice, capital, spacing, targetSpacing * 0.5, filters != null);
 }
 
 export function validateLadderAgainstLivePrice(
@@ -271,6 +300,7 @@ function selectBuyingCandidates(
   analysis: MultiTimeframeAnalysis,
   currentPrice: number,
   spacing: number,
+  mode: LadderMode,
 ): PriceCandidate[] {
   const primary = analysis.timeframes['15m'];
   const candidates: PriceCandidate[] = [];
@@ -301,14 +331,20 @@ function selectBuyingCandidates(
   }
   addContextCandidates(candidates, analysis.timeframes['1h'], '1H', 'support', currentPrice);
   addContextCandidates(candidates, analysis.timeframes['4h'], '4H', 'support', currentPrice);
-  return selectDistributedCandidates(
-    candidates,
-    createEstimatedCandidates(currentPrice, spacing, 'below'),
-    currentPrice,
-    spacing,
-    'below',
-    MAX_BUYING_LEVELS,
-  );
+  const unit = new Decimal(spacing);
+  const zones = mergeCandidateZones(candidates, spacing * 0.1);
+  return BUY_LEVEL_MULTIPLIERS[mode].map((multiplier) => {
+    const projected = new Decimal(currentPrice).minus(unit.mul(multiplier));
+    const nearby = zones
+      .filter((candidate) => candidate.price.gt(0) && candidate.price.lt(currentPrice) && candidate.price.minus(projected).abs().lte(unit.mul('0.05')))
+      .sort((a, b) => a.price.minus(projected).abs().comparedTo(b.price.minus(projected).abs()));
+    return nearby[0] ?? {
+      estimated: true,
+      price: projected,
+      reasons: ['Estimated buying level based on mode and intraday volatility', 'No nearby support or moving average was available'],
+      score: 0,
+    };
+  }).filter((candidate) => candidate.price.gt(0));
 }
 
 function selectTargetCandidates(
@@ -316,6 +352,7 @@ function selectTargetCandidates(
   currentPrice: number,
   averageEntry: Decimal,
   spacing: number,
+  mode: LadderMode,
 ): PriceCandidate[] {
   const primary = analysis.timeframes['15m'];
   const candidates: PriceCandidate[] = [];
@@ -349,15 +386,28 @@ function selectTargetCandidates(
     'resistance',
     minimumTargetPrice,
   );
-  const estimates = createEstimatedCandidates(minimumTargetPrice, spacing, 'above');
-  return selectDistributedCandidates(
-    candidates.filter((candidate) => candidate.price.gt(minimumTargetPrice)),
-    estimates.filter((candidate) => candidate.price.gt(minimumTargetPrice)),
-    currentPrice,
-    spacing,
-    'above',
-    MAX_TAKE_PROFIT_TARGETS,
-  );
+  const reference = minimumTargetPrice;
+  const unit = new Decimal(spacing);
+  const tolerance = mode === 'extended' ? 0.05 : 0.2;
+  const zones = mergeCandidateZones(candidates, spacing * (mode === 'extended' ? 0.1 : 0.2));
+  return Array.from({ length: MAX_TAKE_PROFIT_TARGETS }, (_, index) => {
+    const multiplier = mode === 'extended' ? EXTENDED_LEVEL_MULTIPLIERS[index] : index + 1;
+    const projected = reference.plus(unit.mul(multiplier));
+    const nearby = zones
+      .filter((candidate) => candidate.price.gt(minimumTargetPrice) && candidate.price.minus(projected).abs().lte(unit.mul(tolerance)))
+      .sort((a, b) => a.price.minus(projected).abs().comparedTo(b.price.minus(projected).abs()));
+    if (nearby[0]) return nearby[0];
+    return {
+      estimated: true,
+      price: projected,
+      reasons: [mode === 'extended' ? 'Estimated target based on mode and intraday volatility' : 'Estimated target based on bounded intraday volatility', 'No nearby resistance was available'],
+      score: 0,
+    };
+  });
+}
+
+function calculateTargetSpacing(currentPrice: number, buyingSpacing: number): number {
+  return Math.max(currentPrice * 0.003, Math.min(buyingSpacing * 0.5, currentPrice * 0.01));
 }
 
 function addContextCandidates(
@@ -381,50 +431,6 @@ function addContextCandidates(
   }
 }
 
-function selectDistributedCandidates(
-  technicalCandidates: PriceCandidate[],
-  estimatedCandidates: PriceCandidate[],
-  referencePrice: number,
-  minimumSpacing: number,
-  direction: 'above' | 'below',
-  maximum: number,
-): PriceCandidate[] {
-  const technicalZones = mergeCandidateZones(technicalCandidates, minimumSpacing * 0.45);
-  const selected = selectSpacedCandidates(
-    technicalZones,
-    referencePrice,
-    minimumSpacing,
-    direction,
-    maximum,
-  );
-
-  if (selected.length === maximum) {
-    return selected;
-  }
-
-  const estimates = selectSpacedCandidates(
-    estimatedCandidates,
-    referencePrice,
-    minimumSpacing,
-    direction,
-    estimatedCandidates.length,
-  );
-
-  for (const estimate of estimates) {
-    if (selected.some((entry) => entry.price.minus(estimate.price).abs().lt(minimumSpacing))) {
-      continue;
-    }
-    selected.push(estimate);
-    if (selected.length === maximum) {
-      break;
-    }
-  }
-
-  return selected.sort((left, right) =>
-    direction === 'below' ? right.price.comparedTo(left.price) : left.price.comparedTo(right.price),
-  );
-}
-
 function mergeCandidateZones(
   candidates: PriceCandidate[],
   mergeDistance: number,
@@ -446,61 +452,6 @@ function mergeCandidateZones(
   }
 
   return zones;
-}
-
-function selectSpacedCandidates(
-  candidates: PriceCandidate[],
-  referencePrice: number,
-  minimumSpacing: number,
-  direction: 'above' | 'below',
-  maximum: number,
-): PriceCandidate[] {
-  const sorted = candidates
-    .filter((candidate) =>
-      direction === 'below'
-        ? candidate.price.gt(0) && candidate.price.lt(referencePrice)
-        : candidate.price.gt(referencePrice),
-    )
-    .sort((left, right) =>
-      direction === 'below'
-        ? right.price.comparedTo(left.price)
-        : left.price.comparedTo(right.price),
-    );
-  const selected: PriceCandidate[] = [];
-
-  for (const candidate of sorted) {
-    if (selected.some((entry) => entry.price.minus(candidate.price).abs().lt(minimumSpacing))) {
-      continue;
-    }
-    selected.push({ ...candidate, reasons: [...candidate.reasons] });
-    if (selected.length === maximum) {
-      break;
-    }
-  }
-
-  return selected;
-}
-
-function createEstimatedCandidates(
-  referencePrice: Decimal.Value,
-  spacing: number,
-  direction: 'above' | 'below',
-): PriceCandidate[] {
-  return ESTIMATED_LEVEL_MULTIPLIERS.map((multiplier) => {
-    const price =
-      direction === 'below'
-        ? new Decimal(referencePrice).minus(new Decimal(spacing).mul(multiplier))
-        : new Decimal(referencePrice).plus(new Decimal(spacing).mul(multiplier));
-    return {
-      estimated: true,
-      price,
-      reasons: [
-        `Estimated 15M volatility projection (${multiplier.toFixed(1)} adaptive spacing units)`,
-        'Spacing uses 15M ATR and the recent 24-hour range',
-      ],
-      score: 0,
-    };
-  }).filter((candidate) => candidate.price.gt(0));
 }
 
 function calculateAdaptiveSpacing(
@@ -656,6 +607,7 @@ function validateTechnicalLadder(
   referencePrice: number,
   capital: Decimal.Value,
   minimumSpacing: number,
+  minimumTargetSpacing: number,
   requireExactPresentation: boolean,
 ): TechnicalLadder {
   const allFinite = [
@@ -685,7 +637,7 @@ function validateTechnicalLadder(
   );
   const targetSpacingIsValid = ladder.takeProfitTargets.every(
     (target, index, targets) =>
-      index === 0 || target.price.minus(targets[index - 1].price).gte(minimumSpacing),
+      index === 0 || target.price.minus(targets[index - 1].price).gte(minimumTargetSpacing),
   );
   const allocations = ladder.buyingLevels.reduce(
     (total, level) => total.plus(level.allocation),
