@@ -1,0 +1,2612 @@
+@import 'tailwindcss';
+
+:root {
+  color: #172033;
+  background: #f7f8fc;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+}
+
+a {
+  color: inherit;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  min-height: 4.5rem;
+  padding: 0 1.25rem;
+  border-bottom: 1px solid #e6e9f2;
+  background: rgb(255 255 255 / 85%);
+}
+
+.settings-link {
+  margin-left: auto;
+  color: #5c667a;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.settings-link:hover {
+  color: #315efb;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: #172033;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand-mark {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border-radius: 0.625rem;
+  background: #315efb;
+  color: #ffffff;
+  font-size: 0.875rem;
+}
+
+.app-main {
+  width: min(100% - 2.5rem, 72rem);
+  min-height: calc(100vh - 4.5rem);
+  margin: 0 auto;
+  padding: 2rem 0;
+}
+
+.app-footer {
+  width: min(100% - 2.5rem, 72rem);
+  margin: 0 auto;
+  padding: 0 0 1.5rem;
+  color: #7a8498;
+  font-size: 0.6875rem;
+  text-align: center;
+}
+
+.dashboard {
+  display: grid;
+  gap: 1.25rem;
+  padding-bottom: 2rem;
+}
+
+.dashboard-intro {
+  max-width: 44rem;
+  padding: 1rem 0 0.5rem;
+}
+
+.default-market-section {
+  overflow: hidden;
+  border: 1px solid #263450;
+  border-radius: 1.125rem;
+  background: radial-gradient(circle at top right, rgb(64 101 185 / 28%), transparent 36%), #101827;
+  box-shadow: 0 1rem 2.5rem rgb(10 18 34 / 20%);
+  color: #edf3ff;
+}
+
+.default-market-heading,
+.default-market-columns,
+.default-coin-row {
+  display: grid;
+  grid-template-columns: minmax(11rem, 1.8fr) minmax(6rem, 1fr) minmax(4rem, 0.65fr) minmax(
+      6rem,
+      0.8fr
+    );
+  align-items: center;
+  gap: 1rem;
+}
+
+.default-market-heading {
+  padding: 1.25rem 1.25rem 0.875rem;
+}
+
+.default-market-heading .eyebrow {
+  color: #8faeff;
+}
+
+.default-market-heading h2 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 1.125rem;
+}
+
+.default-market-heading > span {
+  grid-column: 4;
+  justify-self: end;
+  color: #aebbd3;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.default-market-columns {
+  padding: 0.625rem 1.25rem;
+  border-top: 1px solid rgb(155 177 224 / 15%);
+  border-bottom: 1px solid rgb(155 177 224 / 15%);
+  color: #8494b1;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.default-coin-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.default-coin-list li + li {
+  border-top: 1px solid rgb(155 177 224 / 10%);
+}
+
+.default-coin-row {
+  width: 100%;
+  padding: 0.75rem 1.25rem;
+  border: 0;
+  background: transparent;
+  color: #edf3ff;
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.default-coin-row:hover,
+.default-coin-row:focus-visible {
+  outline: 0;
+  background: rgb(104 139 226 / 14%);
+}
+
+.default-coin-row:active {
+  transform: scale(0.998);
+}
+
+.default-coin-identity {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.default-coin-identity strong,
+.default-coin-identity small {
+  display: block;
+}
+
+.default-coin-identity strong {
+  color: #f7f9ff;
+  font-size: 0.8125rem;
+}
+
+.default-coin-identity small {
+  margin-top: 0.125rem;
+  overflow: hidden;
+  color: #95a4c0;
+  font-size: 0.6875rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coin-logo {
+  position: relative;
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: #273a60;
+  color: #dce7ff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.coin-logo-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  background: #1a2230;
+  object-fit: cover;
+}
+
+.coin-logo > span {
+  line-height: 1;
+}
+
+.coin-logo > span:not(.coin-logo-svg) {
+  max-width: 82%;
+  overflow: hidden;
+  font-size: 0.68em;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  text-overflow: ellipsis;
+}
+
+.coin-logo-svg {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+
+.coin-logo-btc {
+  background: #f7931a;
+  color: #ffffff;
+  font-size: 1.125rem;
+}
+
+.coin-logo-eth {
+  background: linear-gradient(145deg, #627eea 50%, #344fd4 50%);
+  color: #ffffff;
+}
+
+.coin-logo-sol {
+  background: linear-gradient(145deg, #14f195, #9945ff);
+  color: #101827;
+}
+
+.coin-logo-sui {
+  background: #6fbcf0;
+  color: #ffffff;
+}
+
+.coin-logo-bnb,
+.coin-logo-zec {
+  background: #f3ba2f;
+  color: #1f1c13;
+}
+
+.coin-logo-aave {
+  background: #b6509e;
+  color: #ffffff;
+}
+
+.coin-logo-link {
+  background: #2a5ada;
+  color: #ffffff;
+}
+
+.coin-logo-hype,
+.coin-logo-inj {
+  background: #ef476f;
+  color: #ffffff;
+}
+
+.coin-logo-uni {
+  background: #ff007a;
+  color: #ffffff;
+}
+
+.coin-logo-near {
+  background: #1d2939;
+  color: #ffffff;
+}
+
+.coin-logo-xrp {
+  background: #23292f;
+  color: #ffffff;
+}
+
+.default-coin-price,
+.default-coin-change,
+.default-coin-status {
+  justify-self: end;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.default-coin-price {
+  color: #f7f9ff;
+}
+
+.default-coin-change.positive-value {
+  color: #56c99e;
+}
+
+.default-coin-change.negative-value {
+  color: #ee7c7c;
+}
+
+.default-coin-status {
+  padding: 0.3rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  letter-spacing: 0.04em;
+}
+
+.default-coin-status-bullish {
+  background: rgb(70 192 145 / 15%);
+  color: #61d7aa;
+}
+
+.default-coin-status-bearish {
+  background: rgb(242 107 107 / 14%);
+  color: #ff9696;
+}
+
+.default-coin-status-caution {
+  background: rgb(245 190 77 / 14%);
+  color: #f3c96b;
+}
+
+.default-coin-status-neutral {
+  background: rgb(170 185 215 / 14%);
+  color: #b9c5dd;
+}
+
+.dashboard-intro > p:last-child,
+.analysis-status p:last-child {
+  max-width: 40rem;
+  margin: 1rem 0 0;
+  color: #5c667a;
+  line-height: 1.65;
+}
+
+.setup-grid,
+.plans-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.setup-card,
+.plan-card,
+.calculator-section,
+.analysis-status {
+  border: 1px solid #e6e9f2;
+  border-radius: 1.125rem;
+  background: #ffffff;
+  box-shadow: 0 0.75rem 2.25rem rgb(23 32 51 / 4%);
+}
+
+.live-status {
+  margin: 0.625rem 0 0 !important;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.live-status-live {
+  color: #26836b !important;
+}
+
+.live-status-connecting,
+.live-status-reconnecting,
+.live-status-stale {
+  color: #9a6b16 !important;
+}
+
+.live-status-disconnected {
+  color: #7a8498 !important;
+}
+
+.market-condition {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0 0 !important;
+  color: #5c667a;
+  font-size: 0.8125rem;
+}
+
+.market-status-badge {
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+.market-status-bullish {
+  background: #e5f6ef;
+  color: #16765d;
+}
+
+.market-status-bearish,
+.market-status-not-ideal {
+  background: #fff0ef;
+  color: #b54b43;
+}
+
+.market-status-caution {
+  background: #fff6dd;
+  color: #96680b;
+}
+
+.market-status-neutral {
+  background: #eef1f6;
+  color: #687385;
+}
+
+.analysis-updated {
+  margin: 0.5rem 0 0 !important;
+  color: #7a8498 !important;
+  font-size: 0.6875rem;
+}
+
+.analysis-price-reference {
+  margin: 0.5rem 0 0 !important;
+  color: #b7c3db !important;
+  font-size: 0.75rem;
+}
+
+.retry-analysis-button {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.625rem;
+  border: 1px solid #315efb;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #315efb;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.setup-card,
+.plan-card {
+  padding: 1.25rem;
+}
+
+.section-heading,
+.card-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.section-heading h2,
+.card-title-row h2,
+.calculator-section h2,
+.analysis-status h2 {
+  margin: 0;
+  color: #172033;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+}
+
+.step-label {
+  margin: 0 0 0.375rem;
+  color: #7a8498;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.currency-badge,
+.pending-badge {
+  padding: 0.375rem 0.625rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #315efb;
+  font-size: 0.6875rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+}
+
+.pending-badge {
+  background: #f2f4f8;
+  color: #687385;
+  white-space: nowrap;
+}
+
+.field-label {
+  display: block;
+  margin: 1.5rem 0 0.5rem;
+  color: #33415c;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.currency-field,
+.pair-search-row {
+  display: flex;
+  align-items: center;
+  min-height: 3.25rem;
+  border: 1px solid #d8ddea;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.currency-field:focus-within,
+.pair-search-row:focus-within {
+  border-color: #315efb;
+  box-shadow: 0 0 0 0.2rem rgb(49 94 251 / 12%);
+}
+
+.currency-field > span:first-child {
+  padding-left: 0.875rem;
+  color: #687385;
+}
+
+.currency-field input,
+.pair-search-row input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #172033;
+  font-size: 1rem;
+}
+
+.currency-field input {
+  padding: 0.75rem 0.5rem;
+  font-weight: 700;
+}
+
+.pair-search-row input {
+  padding: 0.75rem 0.875rem;
+}
+
+.field-suffix {
+  padding-right: 0.875rem;
+  color: #7a8498;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.field-help,
+.field-error {
+  margin: 0.625rem 0 0;
+  color: #7a8498;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.field-error {
+  color: #c04444;
+}
+
+.query-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 0.625rem;
+  color: #c04444;
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.query-error button {
+  flex: 0 0 auto;
+  padding: 0.3rem 0.5rem;
+  border: 1px solid currentColor;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: inherit;
+  font-weight: 700;
+}
+
+.pair-results {
+  display: grid;
+  max-height: 14rem;
+  gap: 0.25rem;
+  margin: 0.5rem 0 0;
+  padding: 0.375rem;
+  overflow-y: auto;
+  border: 1px solid #e6e9f2;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  list-style: none;
+}
+
+.pair-results button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.625rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: #33415c;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  text-align: left;
+}
+
+.pair-results button:hover,
+.pair-results button:focus-visible {
+  background: #f3f6ff;
+  outline: 0;
+}
+
+.pair-results strong {
+  color: #172033;
+}
+
+.pair-results span {
+  margin-left: auto;
+  color: #7a8498;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.primary-button {
+  align-self: stretch;
+  margin: 0.25rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 0.5625rem;
+  background: #315efb;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 750;
+  transition:
+    background 160ms ease,
+    transform 160ms ease;
+}
+
+.primary-button:hover:not(:disabled) {
+  background: #204bdc;
+}
+
+.primary-button:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.primary-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.analysis-status {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-color: #dce4ff;
+  background: #f8faff;
+}
+
+.status-icon {
+  display: grid;
+  flex: 0 0 auto;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 0.75rem;
+  background: #e9eeff;
+  color: #315efb;
+}
+
+.status-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.card-description {
+  margin: 0.875rem 0 1.25rem;
+  color: #687385;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.level-list {
+  display: grid;
+  gap: 0.625rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.ladder-summary {
+  display: grid;
+  gap: 0.5rem 1rem;
+  margin: 1rem 0 0;
+  padding: 0.875rem;
+  border: 1px solid #2a3854;
+  border-radius: 0.75rem;
+  background: #121a29;
+}
+
+.ladder-summary div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.ladder-summary dt {
+  color: #9198aa;
+  font-size: 0.75rem;
+}
+
+.ladder-summary dd {
+  margin: 0;
+  color: #e7ebf5;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: right;
+}
+
+.ladder-summary-note {
+  margin: -0.25rem 0 0;
+  color: #9198aa;
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.level-list li {
+  display: grid;
+  grid-template-columns: 2.25rem 1fr 3.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  border-radius: 0.625rem;
+  background: #fafbfe;
+}
+
+.level-number {
+  color: #687385;
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.target-number {
+  color: #3b9f84;
+}
+
+.level-placeholder {
+  display: block;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #eaedf4 20%, #f5f6fa 50%, #eaedf4 80%);
+}
+
+.level-placeholder-short {
+  width: 75%;
+  justify-self: end;
+}
+
+.level-price,
+.level-allocation {
+  color: #33415c;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.level-rationale {
+  padding: 1rem 1.25rem;
+  border: 1px solid #e6e9f2;
+  border-radius: 0.875rem;
+  background: #ffffff;
+  color: #5c667a;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.level-rationale summary {
+  color: #33415c;
+  cursor: pointer;
+  font-weight: 750;
+}
+
+.level-rationale ul {
+  display: grid;
+  gap: 0.375rem;
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.level-allocation {
+  justify-self: end;
+  color: #687385;
+  font-weight: 600;
+  text-align: right;
+}
+
+.calculator-section {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.25rem;
+}
+
+.calculator-links {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.calculator-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  border: 1px solid #e6e9f2;
+  border-radius: 0.75rem;
+  color: #172033;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.calculator-link:hover {
+  border-color: #bfcafa;
+  box-shadow: 0 0.5rem 1rem rgb(23 32 51 / 5%);
+}
+
+.calculator-link-icon {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 0.5rem;
+  background: #eef2ff;
+  color: #315efb;
+  font-weight: 700;
+}
+
+.calculator-link strong,
+.calculator-link small {
+  display: block;
+}
+
+.calculator-link strong {
+  font-size: 0.875rem;
+}
+
+.calculator-link small {
+  margin-top: 0.125rem;
+  color: #7a8498;
+  font-size: 0.75rem;
+}
+
+.welcome-card {
+  width: min(100%, 38rem);
+  padding: clamp(1.5rem, 6vw, 3rem);
+  border: 1px solid #e6e9f2;
+  border-radius: 1.25rem;
+  background: #ffffff;
+  box-shadow: 0 1rem 3rem rgb(23 32 51 / 7%);
+}
+
+.eyebrow {
+  margin: 0 0 0.75rem;
+  color: #315efb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  color: #172033;
+  font-size: clamp(1.875rem, 5vw, 2.75rem);
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+}
+
+.welcome-copy {
+  margin: 1.25rem 0 0;
+  color: #5c667a;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.foundation-list {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.foundation-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: #33415c;
+  font-size: 0.9375rem;
+}
+
+.foundation-list li::before {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: #62c4a5;
+  content: '';
+}
+
+.text-link {
+  display: inline-block;
+  margin-top: 1.5rem;
+  color: #315efb;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.text-link:hover {
+  text-decoration: underline;
+}
+
+.calculator-page {
+  width: min(100%, 42rem);
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+}
+
+.calculator-page-compact {
+  width: min(100%, 39rem);
+  padding-top: 1.25rem;
+}
+
+.calculator-page-compact .back-link {
+  min-height: auto;
+  padding: 0.4rem 0.5rem;
+  border-color: transparent;
+  background: transparent;
+  color: #9eabc2;
+  font-size: 0.75rem;
+}
+
+.calculator-page-compact .back-link:hover {
+  background: #141a26;
+  color: #edf3ff;
+}
+
+.calculator-page > .eyebrow {
+  margin-top: 1.75rem;
+}
+
+.calculator-intro {
+  margin: 1rem 0 1.5rem;
+  color: #5c667a;
+  line-height: 1.65;
+}
+
+.back-link {
+  color: #315efb;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.calculator-card {
+  padding: 1.25rem;
+  border: 1px solid #e6e9f2;
+  border-radius: 1rem;
+  background: #ffffff;
+  box-shadow: 0 0.75rem 2.25rem rgb(23 32 51 / 4%);
+}
+
+.calculator-grid-head,
+.calculator-input-row,
+.calculator-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.calculator-grid-head {
+  margin-bottom: 0.5rem;
+  color: #687385;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.calculator-input-row {
+  margin-bottom: 0.75rem;
+}
+
+.calculator-input-row input,
+.calculator-field input {
+  width: 100%;
+  min-height: 3rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid #d8ddea;
+  border-radius: 0.625rem;
+  outline: 0;
+}
+
+.calculator-input-row input:focus,
+.calculator-field input:focus {
+  border-color: #315efb;
+  box-shadow: 0 0 0 0.2rem rgb(49 94 251 / 12%);
+}
+
+.secondary-button,
+.primary-action {
+  min-height: 2.75rem;
+  padding: 0 0.875rem;
+  border: 1px solid #c9d3fb;
+  border-radius: 0.625rem;
+  background: #f3f6ff;
+  color: #315efb;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  font-weight: 750;
+}
+
+.primary-action {
+  border-color: #315efb;
+  background: #315efb;
+  color: #ffffff;
+}
+
+.calculator-result {
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  background: #f7f9ff;
+}
+
+.calculator-result span,
+.calculator-result small {
+  color: #687385;
+  font-size: 0.75rem;
+}
+
+.calculator-result strong {
+  color: #172033;
+  font-size: 1.25rem;
+  letter-spacing: -0.025em;
+}
+
+.positive-value {
+  color: #26836b !important;
+}
+
+.negative-value {
+  color: #c04444 !important;
+}
+
+.calculator-form-grid {
+  gap: 1rem;
+}
+
+.calculator-field {
+  display: grid;
+  gap: 0.4rem;
+  color: #33415c;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.settings-card {
+  display: grid;
+  gap: 1rem;
+}
+
+.pwa-prompt {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: min(100% - 2rem, 28rem);
+  padding: 0.75rem;
+  border: 1px solid #dce4ff;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: 0 0.75rem 2rem rgb(23 32 51 / 15%);
+  color: #33415c;
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.pwa-prompt button {
+  padding: 0.4rem 0.625rem;
+  border: 0;
+  border-radius: 0.375rem;
+  background: #315efb;
+  color: #ffffff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.pwa-prompt button:last-child {
+  margin-left: auto;
+  background: transparent;
+  color: #687385;
+  font-size: 1rem;
+}
+
+@media (max-width: 47.99rem) {
+  .default-market-heading {
+    grid-template-columns: 1fr auto;
+  }
+
+  .default-market-heading > span {
+    grid-column: 2;
+  }
+
+  .default-market-columns {
+    display: none;
+  }
+
+  .default-coin-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.25rem 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .default-coin-identity {
+    grid-row: span 2;
+  }
+
+  .default-coin-price,
+  .default-coin-change {
+    grid-column: 2;
+  }
+
+  .default-coin-status {
+    grid-column: 1;
+    justify-self: start;
+    margin-top: 0.25rem;
+  }
+}
+
+/* Calculator tools use the same dark market workspace as the dashboard. */
+.calculator-page {
+  width: min(100%, 48rem);
+  padding: 2rem 0 3rem;
+}
+
+.calculator-page > .eyebrow {
+  margin-top: 1.5rem;
+  color: #78a0ff;
+}
+
+.calculator-page h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: clamp(1.75rem, 3vw, 2.5rem);
+  letter-spacing: -0.05em;
+  line-height: 1.08;
+}
+
+.calculator-intro {
+  max-width: 42rem;
+  margin: 0.75rem 0 1.5rem;
+  color: #aeb5c5;
+  font-size: 1rem;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.5rem;
+  padding: 0 0.875rem;
+  border: 1px solid #2b3958;
+  border-radius: 0.625rem;
+  background: #141a26;
+  color: #adc6ff;
+}
+
+.back-link:hover {
+  border-color: #4d8eff;
+  background: #1b2435;
+  text-decoration: none;
+}
+
+.calculator-card {
+  padding: clamp(1rem, 2.5vw, 1.5rem);
+  border-color: #26334d;
+  border-radius: 1.125rem;
+  background: linear-gradient(145deg, #1b202a, #151a23);
+  box-shadow: 0 1.5rem 3.5rem rgb(3 7 18 / 28%);
+}
+
+.average-buy-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin: -1rem -1rem 1rem;
+  padding: 1rem;
+  border-bottom: 1px solid #26334d;
+  background: linear-gradient(180deg, rgb(36 44 62 / 54%), transparent);
+}
+
+.average-buy-card-kicker {
+  margin: 0 0 0.35rem;
+  color: #8c909f;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.average-buy-card h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: 1.25rem;
+  letter-spacing: -0.03em;
+}
+
+.average-buy-card h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.125rem;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.average-buy-card-description {
+  max-width: 28rem;
+  margin: 0.5rem 0 0;
+  color: #aeb5c5;
+  font-size: 0.75rem;
+  line-height: 1.55;
+}
+
+.average-buy-count {
+  flex: 0 0 auto;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #284267;
+  border-radius: 999px;
+  background: #16233a;
+  color: #adc6ff;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.6875rem;
+  font-weight: 700;
+}
+
+.existing-position {
+  padding: 0.875rem;
+  border: 1px solid #2b3958;
+  border-radius: 0.875rem;
+  background: #121824;
+}
+
+.existing-position-heading,
+.planned-buys-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.existing-position-heading p,
+.planned-buys-heading p {
+  margin: 0 0 0.2rem;
+  color: #8c909f;
+  font-size: 0.625rem;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.existing-position-heading h3,
+.planned-buys-heading h3 {
+  margin: 0;
+  color: #edf3ff;
+  font-size: 0.9375rem;
+}
+
+.existing-position-heading > span,
+.planned-buys-heading > span {
+  color: #8c909f;
+  font-size: 0.6875rem;
+}
+
+.existing-position-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.625rem;
+}
+
+.planned-buys-heading {
+  margin: 1rem 0 0.625rem;
+}
+
+.average-buy-grid-head,
+.average-buy-input-row {
+  grid-template-columns: 3.25rem minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+}
+
+.calculator-grid-head {
+  margin-bottom: 0.625rem;
+  color: #8c909f;
+  font-size: 0.6875rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.average-buy-input-row {
+  margin-bottom: 0.625rem;
+}
+
+.average-buy-row-number {
+  display: grid;
+  width: 2rem;
+  height: 2rem;
+  place-items: center;
+  border: 1px solid #2b3958;
+  border-radius: 0.5rem;
+  background: #111722;
+  color: #adc6ff;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.calculator-input-row input,
+.calculator-field input {
+  min-height: 2.875rem;
+  border-color: #2b3958;
+  background: #0d121b;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.calculator-field-unit > div,
+.average-buy-row-field {
+  position: relative;
+}
+
+.calculator-field-unit input,
+.average-buy-row-field input {
+  padding-right: 3.5rem;
+}
+
+.calculator-field-unit i,
+.average-buy-row-field i {
+  position: absolute;
+  top: 50%;
+  right: 0.625rem;
+  color: #68758d;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.5625rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  text-transform: uppercase;
+  transform: translateY(-50%);
+}
+
+.average-buy-row-field {
+  min-width: 0;
+}
+
+.calculator-input-row input::placeholder,
+.calculator-field input::placeholder {
+  color: #596277;
+}
+
+.calculator-input-row input:focus,
+.calculator-field input:focus {
+  border-color: #4d8eff;
+  box-shadow: 0 0 0 0.2rem rgb(77 142 255 / 16%);
+}
+
+.secondary-button,
+.primary-action {
+  margin-top: 0.5rem;
+  border-color: #315aa2;
+  background: #172642;
+  color: #adc6ff;
+}
+
+.average-buy-card .secondary-button {
+  border-style: dashed;
+  border-color: #258b76;
+  background: #112720;
+  color: #63dfb1;
+  font-size: 0.75rem;
+}
+
+.average-buy-card .secondary-button:hover {
+  border-color: #63dfb1;
+  background: #15352c;
+}
+
+.secondary-button:hover,
+.primary-action:hover {
+  border-color: #4d8eff;
+  background: #1f3560;
+}
+
+.primary-action {
+  background: #4d8eff;
+  color: #07172e;
+}
+
+.calculator-result {
+  margin-top: 1.5rem;
+  border: 1px solid #165064;
+  border-radius: 0.875rem;
+  background: linear-gradient(135deg, #14223b, #111b2d);
+}
+
+.calculator-result span,
+.calculator-result small {
+  color: #9eabc2;
+}
+
+.calculator-result strong {
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.average-buy-result {
+  gap: 1rem;
+  padding: 1rem;
+}
+
+.average-buy-result > div:first-child {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.average-buy-result-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgb(142 177 238 / 18%);
+}
+
+.average-buy-result-details > span {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.average-buy-result-details b {
+  color: #63dfb1;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+.average-buy-result-details > span {
+  padding: 0.625rem;
+  border: 1px solid rgb(48 92 116 / 35%);
+  border-radius: 0.5rem;
+  background: rgb(7 14 25 / 42%);
+}
+
+@media (max-width: 47.99rem) {
+  .calculator-page {
+    padding: 1.75rem 0 2.5rem;
+  }
+
+  .average-buy-grid-head {
+    display: none;
+  }
+
+  .average-buy-input-row {
+    grid-template-columns: 2.5rem minmax(0, 1fr);
+    gap: 0.5rem;
+    padding: 0.75rem;
+    border: 1px solid #26334d;
+    border-radius: 0.75rem;
+    background: #121824;
+  }
+
+  .average-buy-input-row input {
+    min-width: 0;
+  }
+
+  .average-buy-input-row input:last-child {
+    grid-column: 2;
+  }
+
+  .average-buy-input-row .average-buy-row-field:last-child {
+    grid-column: 2;
+  }
+
+  .existing-position-fields {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Dedicated coin-analysis screen. */
+.coin-analysis-page {
+  display: grid;
+  gap: 1.5rem;
+  padding-bottom: 2rem;
+  animation: terminal-enter 260ms ease-out both;
+}
+
+.coin-analysis-page .analysis-status,
+.coin-analysis-page .plan-card,
+.coin-analysis-page .level-rationale {
+  border-color: #26334d;
+  background: #181c24;
+  box-shadow: 0 1.25rem 3rem rgb(3 7 18 / 24%);
+}
+
+.coin-analysis-page .analysis-status {
+  border-radius: 1rem;
+  color: #dfe2ee;
+}
+
+.coin-analysis-page .status-icon {
+  background: rgb(77 142 255 / 16%);
+  color: #adc6ff;
+}
+
+.coin-analysis-page .analysis-status h2,
+.coin-analysis-page .plan-card h2 {
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+}
+
+.coin-analysis-page .analysis-status p,
+.coin-analysis-page .card-description {
+  color: #aeb5c5;
+}
+
+.coin-analysis-page .step-label {
+  color: #8c909f;
+}
+
+.default-market-columns > span:nth-child(2),
+.default-market-columns > span:nth-child(3),
+.default-market-columns > span:nth-child(4),
+.default-market-columns > span:nth-child(6) {
+  justify-self: end;
+  text-align: right;
+}
+
+.default-market-columns > span:nth-child(5) {
+  justify-self: center;
+  text-align: center;
+}
+
+.coin-analysis-page .pending-badge {
+  border: 1px solid #26334d;
+  background: #262a33;
+  color: #c2c6d6;
+}
+
+.coin-analysis-page .plan-card {
+  border-radius: 1rem;
+}
+
+.coin-analysis-page .level-list li {
+  grid-template-columns: 3.5rem minmax(8rem, 1fr) minmax(10rem, auto);
+  min-height: 4.25rem;
+  padding: 0.75rem 1rem;
+  border-color: #26334d;
+  background: #111827;
+}
+
+.coin-analysis-page .level-number {
+  color: #dfe2ee;
+}
+
+.coin-analysis-page .level-price {
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.coin-analysis-page .level-allocation {
+  color: #8c909f;
+}
+
+.coin-analysis-page .target-allocation {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 9rem;
+  color: #8c909f;
+  font-size: 0.75rem;
+  text-align: right;
+}
+
+.coin-analysis-page .target-allocation strong {
+  color: #4edea3;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8125rem;
+}
+
+.coin-analysis-page .level-list li:has(.target-number) {
+  border-left: 3px solid #adc6ff;
+}
+
+.coin-analysis-page .level-list li:has(.level-number:not(.target-number)) {
+  border-left: 3px solid #4edea3;
+}
+
+@media (max-width: 47.99rem) {
+  .coin-analysis-page .level-list li {
+    grid-template-columns: 3rem minmax(6rem, 1fr);
+    gap: 0.5rem;
+  }
+
+  .coin-analysis-page .level-allocation {
+    grid-column: 2;
+    justify-self: start;
+    text-align: left;
+  }
+
+  .coin-analysis-page .target-allocation {
+    min-width: 0;
+  }
+}
+
+.coin-analysis-page .target-number {
+  color: #adc6ff;
+}
+
+.coin-analysis-page .level-rationale {
+  color: #c2c6d6;
+}
+
+.coin-analysis-page .level-rationale summary {
+  color: #f8fafc;
+}
+
+@media (min-width: 48rem) {
+  .app-header {
+    padding: 0 2rem;
+  }
+
+  .app-main {
+    width: min(100% - 4rem, 72rem);
+    padding: 3rem 0;
+  }
+
+  .app-footer {
+    width: min(100% - 4rem, 72rem);
+  }
+
+  .dashboard {
+    gap: 1.5rem;
+  }
+
+  .setup-grid,
+  .plans-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .setup-card,
+  .plan-card,
+  .calculator-section,
+  .analysis-status {
+    padding: 1.5rem;
+  }
+
+  .calculator-section {
+    grid-template-columns: minmax(12rem, 0.65fr) 1fr;
+    align-items: center;
+  }
+
+  .calculator-links {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Precision Spot Terminal: shared application shell and capital setup. */
+:root {
+  color: #dfe2ee;
+  background: #0f131c;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  font-synthesis: none;
+}
+
+body {
+  background: #0f131c;
+  color: #dfe2ee;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.app-shell {
+  display: grid;
+  min-height: 100vh;
+  grid-template-rows: auto 1fr auto;
+  background: radial-gradient(circle at 88% 18%, rgb(77 142 255 / 6%), transparent 28rem), #0f131c;
+}
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  min-height: 4.25rem;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0 1rem;
+  border-bottom: 1px solid rgb(66 71 84 / 65%);
+  background: rgb(15 19 28 / 88%);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+
+.brand {
+  flex: 0 0 auto;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.brand-mark {
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid rgb(173 198 255 / 35%);
+  border-radius: 0.625rem;
+  background: rgb(77 142 255 / 18%);
+  color: #adc6ff;
+  font-size: 1.125rem;
+}
+
+.app-navigation {
+  display: flex;
+  min-width: 0;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 0.25rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.app-navigation::-webkit-scrollbar {
+  display: none;
+}
+
+.app-navigation-link {
+  flex: 0 0 auto;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.5rem;
+  color: #aeb5c5;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition:
+    color 160ms ease,
+    background 160ms ease;
+}
+
+.app-navigation-link:hover,
+.app-navigation-link:focus-visible {
+  outline: 0;
+  background: #1c2028;
+  color: #f8fafc;
+}
+
+.app-navigation-link.is-active {
+  background: #262a33;
+  color: #f8fafc;
+}
+
+.app-header-metrics {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.connection-chip,
+.capital-chip {
+  display: inline-flex;
+  min-height: 2rem;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid rgb(66 71 84 / 78%);
+  border-radius: 999px;
+  background: #181c24;
+  color: #c2c6d6;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.035em;
+  text-transform: uppercase;
+}
+
+.connection-chip i {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #8c909f;
+}
+
+.connection-chip-connected i {
+  background: #4edea3;
+  box-shadow: 0 0 0 0.2rem rgb(78 222 163 / 10%);
+}
+
+.connection-chip-degraded i,
+.connection-chip-checking i {
+  background: #adc6ff;
+}
+
+.connection-chip-unavailable i {
+  background: #ffb4ab;
+}
+
+.capital-chip {
+  border-radius: 0.5rem;
+  text-decoration: none;
+  transition:
+    border-color 160ms ease,
+    background 160ms ease;
+}
+
+.capital-chip:hover,
+.capital-chip:focus-visible {
+  border-color: rgb(77 142 255 / 75%);
+  outline: 0;
+}
+
+.capital-chip strong,
+.capital-chip em {
+  color: #4edea3;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-style: normal;
+}
+
+.capital-chip em {
+  color: #aeb5c5;
+  font-size: 0.625rem;
+}
+
+.app-main {
+  width: min(100% - 2rem, 90rem);
+  min-height: auto;
+  padding: 2.5rem 0 3.5rem;
+}
+
+.app-footer {
+  width: 100%;
+  margin: 0;
+  padding: 1.125rem max(1rem, calc((100% - 90rem) / 2));
+  border-top: 1px solid rgb(66 71 84 / 45%);
+  background: #0a0e16;
+  color: #8c909f;
+  font-size: 0.6875rem;
+}
+
+.capital-setup {
+  display: grid;
+  gap: 2.5rem;
+  width: min(100%, 52rem);
+  margin: 0 auto;
+  padding: 2.5rem 0;
+  animation: terminal-enter 300ms ease-out both;
+}
+
+.capital-setup-intro {
+  max-width: 42rem;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.terminal-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0 0 0.75rem;
+  color: #adc6ff;
+  font-size: 0.6875rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.terminal-kicker span {
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.capital-setup h1,
+.capital-setup h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  letter-spacing: -0.04em;
+}
+
+.capital-setup h1 {
+  font-size: clamp(2rem, 5vw, 3.15rem);
+  line-height: 1.1;
+}
+
+.capital-setup-intro > p:last-child {
+  max-width: 38rem;
+  margin: 1rem auto 0;
+  color: #c2c6d6;
+  font-size: 1rem;
+  line-height: 1.65;
+}
+
+.capital-setup-card {
+  display: grid;
+  gap: 1rem;
+  padding: clamp(1.25rem, 4vw, 2.5rem);
+  border: 1px solid #26334d;
+  border-radius: 1rem;
+  background: #181c24;
+  box-shadow: 0 1.25rem 3rem rgb(3 7 18 / 28%);
+}
+
+.capital-setup-card-heading {
+  margin-bottom: 0.5rem;
+}
+
+.capital-setup-card-heading .terminal-kicker {
+  color: #aeb5c5;
+}
+
+.capital-setup h2 {
+  font-size: clamp(1.5rem, 3vw, 2rem);
+}
+
+.capital-setup-card-heading > p:last-child {
+  margin: 0.55rem 0 0;
+  color: #aeb5c5;
+  font-size: 0.875rem;
+}
+
+.terminal-field-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  color: #dfe2ee;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.terminal-field-label small {
+  color: #4edea3;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.capital-input {
+  display: flex;
+  min-height: 5.5rem;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0 1.25rem;
+  border: 1px solid #26334d;
+  border-radius: 0.75rem;
+  background: #0a0e16;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.capital-input:focus-within {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 0.2rem rgb(59 130 246 / 15%);
+}
+
+.capital-input-error {
+  border-color: #ef4444;
+}
+
+.capital-input > span:first-child {
+  color: #64748b;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 1.6rem;
+}
+
+.capital-input input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: clamp(1.7rem, 5vw, 2.2rem);
+  font-weight: 600;
+}
+
+.capital-input-unit {
+  padding: 0.35rem 0.5rem;
+  border-radius: 0.35rem;
+  background: #31353e;
+  color: #dfe2ee;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.terminal-error {
+  margin: 0;
+  color: #ffb4ab;
+  font-size: 0.8125rem;
+}
+
+.capital-quick-options {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.capital-quick-options button {
+  min-height: 2.75rem;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  background: #1c2028;
+  color: #dfe2ee;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.75rem;
+  transition:
+    transform 160ms ease,
+    background 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
+.capital-quick-options button:hover,
+.capital-quick-options button:focus-visible {
+  border-color: rgb(77 142 255 / 75%);
+  outline: 0;
+}
+
+.capital-quick-options button.is-selected {
+  background: #4d8eff;
+  color: #00285d;
+}
+
+.terminal-primary-button {
+  min-height: 3.75rem;
+  margin-top: 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: #4d8eff;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%);
+  color: #00285d;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 800;
+  transition:
+    transform 160ms ease,
+    background 160ms ease;
+}
+
+.terminal-primary-button:hover,
+.terminal-primary-button:focus-visible {
+  outline: 0;
+  background: #3b82f6;
+}
+
+.terminal-primary-button:active {
+  transform: translateY(1px);
+}
+
+@keyframes terminal-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .app-header {
+    gap: 0.75rem;
+    padding: 0 0.75rem;
+  }
+
+  .brand > span:last-child,
+  .connection-chip span,
+  .capital-chip > span,
+  .capital-chip em,
+  .default-market-heading > span {
+    display: none;
+  }
+
+  .app-navigation-link {
+    padding-inline: 0.5rem;
+    font-size: 0.75rem;
+  }
+
+  .app-header-metrics {
+    min-width: 0;
+  }
+
+  .capital-chip {
+    max-width: 4.5rem;
+    overflow: hidden;
+  }
+
+  .capital-chip strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-main {
+    width: min(100% - 1.5rem, 90rem);
+    padding-top: 1.5rem;
+  }
+
+  .capital-setup {
+    gap: 1.75rem;
+    padding: 1.5rem 0;
+  }
+
+  .capital-quick-options {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .capital-quick-options button:last-child {
+    grid-column: span 2;
+  }
+
+  .default-coin-price {
+    max-width: 8.25rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Stage 3 market dashboard. */
+.dashboard {
+  gap: 1.5rem;
+  padding-bottom: 0;
+  animation: terminal-enter 260ms ease-out both;
+}
+
+.dashboard-intro {
+  max-width: 48rem;
+  padding: 0.5rem 0 1rem;
+}
+
+.dashboard-intro .eyebrow,
+.market-search-heading .eyebrow {
+  color: #adc6ff;
+}
+
+.dashboard-intro h1 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  letter-spacing: -0.045em;
+  line-height: 1.1;
+}
+
+.dashboard-intro > p:last-child {
+  margin-top: 0.875rem;
+  color: #aeb5c5;
+  font-size: 1rem;
+}
+
+.default-market-section {
+  border-color: #26334d;
+  border-radius: 1rem;
+  background: #181c24;
+  box-shadow: 0 1.25rem 3rem rgb(3 7 18 / 24%);
+}
+
+.default-market-heading,
+.default-market-columns,
+.default-coin-row {
+  grid-template-columns:
+    minmax(12rem, 1.6fr) minmax(8rem, 1fr) minmax(5rem, 0.7fr) minmax(10rem, 1.1fr)
+    minmax(6rem, 0.75fr) minmax(6rem, 0.7fr);
+  gap: 1.25rem;
+}
+
+.default-market-heading {
+  padding: 1.25rem 1.5rem 1rem;
+}
+
+.default-market-heading h2 {
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: 1.25rem;
+}
+
+.default-market-heading > span {
+  grid-column: 6;
+  color: #8c909f;
+}
+
+.market-list-search {
+  position: relative;
+  grid-column: 2 / span 4;
+  min-width: 0;
+}
+
+.market-list-search-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  color: #8c909f;
+  font-size: 0.625rem;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.market-list-search .pair-search-row {
+  min-height: 2.625rem;
+  border-color: #2b3958;
+  border-radius: 0.625rem;
+  background: #0d121b;
+}
+
+.market-list-search .pair-search-row input {
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.8125rem;
+}
+
+.market-list-search .pair-search-row input::placeholder {
+  color: #677087;
+}
+
+.market-list-search .primary-button {
+  margin: 0.2rem;
+  border-radius: 0.4375rem;
+  background: #4d8eff;
+  color: #07172e;
+  font-size: 0.75rem;
+}
+
+.market-list-search .pair-results {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  left: 0;
+  border-color: #2b3958;
+  background: #111827;
+  box-shadow: 0 1rem 2rem rgb(3 7 18 / 48%);
+}
+
+.market-list-search .pair-results button,
+.market-list-search .pair-results strong {
+  color: #dfe2ee;
+}
+
+.market-list-search .pair-results button {
+  gap: 0.75rem;
+}
+
+.pair-result-identity {
+  display: grid;
+  gap: 0.125rem;
+}
+
+.market-list-search .pair-results .pair-result-identity small {
+  color: #8c909f;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.625rem;
+}
+
+.market-list-search .pair-results .coin-logo {
+  width: 2rem;
+  height: 2rem;
+  font-size: 0.6875rem;
+}
+
+.pair-result-market-data {
+  display: grid;
+  min-width: 7.5rem;
+  gap: 0.125rem;
+  margin-left: auto;
+  text-align: right;
+}
+
+.pair-result-market-data b,
+.pair-result-market-data small {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.pair-result-market-data b {
+  color: #f8fafc;
+  font-size: 0.6875rem;
+}
+
+.market-list-search .pair-results .pair-result-market-data small {
+  font-size: 0.625rem;
+}
+
+.market-list-search .pair-results button:hover,
+.market-list-search .pair-results button:focus-visible {
+  background: #202838;
+}
+
+.market-search-feedback {
+  margin: 0.375rem 0 0;
+  color: #aeb5c5;
+  font-size: 0.6875rem;
+}
+
+.default-market-columns {
+  padding: 0.75rem 1.5rem;
+  border-color: #26334d;
+  background: #111827;
+  color: #8c909f;
+}
+
+.default-coin-list li + li {
+  border-color: rgb(38 51 77 / 76%);
+}
+
+.default-coin-row {
+  padding: 1rem 1.5rem;
+  color: #dfe2ee;
+}
+
+.default-coin-row:hover,
+.default-coin-row:focus-visible {
+  background: #262a33;
+}
+
+.default-coin-identity strong {
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+}
+
+.default-coin-identity small {
+  color: #8c909f;
+}
+
+.default-coin-price {
+  justify-self: end;
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.875rem;
+}
+
+.default-coin-range {
+  color: #8c909f;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.6875rem;
+  text-align: right;
+}
+
+.default-coin-change {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.default-coin-status {
+  justify-self: center;
+}
+
+.default-coin-action {
+  justify-self: end;
+  color: #adc6ff;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.default-coin-action b {
+  display: inline-block;
+  margin-left: 0.25rem;
+  transition: transform 160ms ease;
+}
+
+.default-coin-row:hover .default-coin-action b {
+  transform: translateX(0.2rem);
+}
+
+.market-search-panel {
+  display: grid;
+  grid-template-columns: minmax(14rem, 0.7fr) minmax(20rem, 1.3fr);
+  gap: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid #26334d;
+  border-radius: 1rem;
+  background: #181c24;
+}
+
+.market-search-heading h2 {
+  margin: 0;
+  color: #f8fafc;
+  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-size: 1.125rem;
+  letter-spacing: -0.025em;
+}
+
+.market-search-panel .field-label {
+  color: #c2c6d6;
+}
+
+.market-search-panel .pair-search-row {
+  border-color: #26334d;
+  background: #0a0e16;
+}
+
+.market-search-panel .pair-search-row input {
+  color: #f8fafc;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.market-search-panel .primary-button {
+  margin-right: 0.35rem;
+  border-radius: 0.5rem;
+  background: #4d8eff;
+  color: #00285d;
+}
+
+.market-search-panel .field-help {
+  color: #8c909f;
+}
+
+.market-search-panel .pair-results {
+  border-color: #26334d;
+  background: #111827;
+}
+
+.market-search-panel .pair-results button {
+  color: #dfe2ee;
+}
+
+@media (max-width: 74.99rem) {
+  .default-market-heading,
+  .default-market-columns,
+  .default-coin-row {
+    grid-template-columns:
+      minmax(10rem, 1.4fr) minmax(7rem, 1fr) minmax(4rem, 0.65fr) minmax(5rem, 0.75fr)
+      minmax(5rem, 0.7fr);
+    gap: 0.75rem;
+  }
+
+  .default-market-heading > span,
+  .default-market-columns span:nth-child(4),
+  .default-coin-range {
+    display: none;
+  }
+
+  .market-list-search {
+    grid-column: 2 / span 3;
+  }
+
+  .default-market-columns span:nth-child(5) {
+    grid-column: 4;
+  }
+
+  .default-market-columns span:nth-child(6) {
+    grid-column: 5;
+  }
+
+  .default-coin-status {
+    grid-column: 4;
+  }
+
+  .default-coin-action {
+    grid-column: 5;
+  }
+}
+
+@media (max-width: 47.99rem) {
+  .dashboard {
+    gap: 1rem;
+  }
+
+  .default-market-heading {
+    padding: 1rem;
+  }
+
+  .default-market-heading {
+    grid-template-columns: 1fr;
+    gap: 0.875rem;
+  }
+
+  .default-market-heading > span {
+    display: none;
+  }
+
+  .market-list-search {
+    grid-column: auto;
+  }
+
+  .default-coin-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 0.3rem 0.75rem;
+    padding: 0.875rem 1rem;
+  }
+
+  .default-coin-identity {
+    grid-row: span 2;
+  }
+
+  .default-coin-price,
+  .default-coin-change {
+    grid-column: 2;
+  }
+
+  .default-coin-status {
+    grid-column: 1;
+    grid-row: 3;
+    justify-self: start;
+  }
+
+  .default-coin-action {
+    grid-column: 2;
+    grid-row: 3;
+    align-self: center;
+  }
+
+  .market-search-panel {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+}

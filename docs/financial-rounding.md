@@ -1,0 +1,9 @@
+# Hypothetical plan rounding
+
+Binance exchange metadata supplies the selected symbol's price tick, quantity step, quantity limits, and notional limits. Buy prices round down to the price tick; take-profit prices round up. Buy quantities and each take-profit quantity round down to the quantity step. Each resulting price and quantity is checked against the available symbol limits. If a constraint fails or required filters are unavailable, the plan is unavailable.
+
+Each buy begins with one quarter of the global capital. The displayed planned investment is the rounded quantity multiplied by the rounded buy price, so it can be below the budget. The weighted average uses these planned investments and rounded quantities. Exit quantities use 20%, 30%, 30%, and 20% of the total hypothetical buy quantity, rounded down independently; their remaining quantity is shown as unallocated and is not included in proceeds. Estimated fees are 0.1% per side and are charged separately from the planned purchase amounts.
+
+These are hypothetical estimates, not exchange orders. Symbol filters and fees may change. The application does not model fills, spread, slippage, order types, or all exchange trading rules.
+
+Financial calculations use decimal arithmetic with 80 significant digits. New global-capital entries are stored as decimal strings; legacy numeric settings remain readable. Technical indicators and market feeds still use JavaScript numbers. Financial results are converted to numbers at the current interface boundary. When an order's quantized price or quantity would change in that conversion, the plan is rejected rather than displayed with a different order value. Extremely large amounts and unusually precise symbols can therefore be unavailable until the interface supports exact decimal strings throughout.
