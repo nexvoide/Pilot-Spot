@@ -2,7 +2,7 @@
 
 ## Local use
 
-Spot Ladder runs locally without an account or session. The production server and Vite development server bind to `127.0.0.1`; the API rejects non-loopback clients, forwarded requests, non-local hostnames and cross-site requests. `HOST` cannot override the production bind address. Do not expose the app through port forwarding, public reverse proxies, tunnels, or cloud hosting: any process or person with local access can use the unauthenticated API.
+Spot Ladder runs locally without an account or session. The local production server and Vite development server bind to `127.0.0.1`; the local API rejects non-loopback clients, forwarded requests, non-local hostnames and cross-site requests. `HOST` cannot override the production bind address.
 
 Use Node.js 22.13 or later and npm 10 or later:
 
@@ -22,6 +22,12 @@ Open the local URL printed by Vite. Both `npm run dev` and `npm start` load `.en
 | `MARKET_DATA_REQUEST_TIMEOUT_MS`, `MARKET_DATA_METADATA_CACHE_TTL_MS`, `MARKET_DATA_CANDLE_CACHE_TTL_MS` | Market-data timeout and cache durations. |
 | `PORT` | Node server port, default 8787. |
 | `VITE_BINANCE_WEBSOCKET_BASE_URL` | Public client-side Binance WebSocket URL. |
+| `FRED_API_KEY` | Server-side FRED API key for daily economy series. |
+| `FINNHUB_API_KEY` | Server-side Finnhub API key for stock and ETF quotes and company values. |
+
+## Vercel deployment
+
+The Vercel API is public and read-only. Configure `FRED_API_KEY` and `FINNHUB_API_KEY` in the Vercel project environment for the deployment environment, then redeploy. Without these keys, the corresponding economy data is unavailable; Binance and public market-size data do not require them. Provider availability and geographic restrictions can still affect data.
 
 ## Market-data API architecture
 
@@ -41,7 +47,7 @@ Eligible pair metadata is cached in memory for 15 minutes. Candles are cached in
 
 ## Local production build
 
-Run `npm run build` followed by `npm start`, then open `http://127.0.0.1:8787`. The app intentionally supports local access only. Do not publish it or proxy it to a public network.
+Run `npm run build` followed by `npm start`, then open `http://127.0.0.1:8787`. The Node server supports local access only; use the Vercel entry point for deployment.
 
 ## Quality checks
 

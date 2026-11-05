@@ -10,7 +10,7 @@ function requestFor(options = {}) {
     Object.defineProperty(request, 'socket', { value: { remoteAddress: options.remoteAddress ?? '127.0.0.1' } });
     return request;
 }
-async function call(options = {}) {
+async function call(options = {}, publicAccess = false) {
     let status = 0;
     let payload = '';
     const response = {
@@ -18,7 +18,7 @@ async function call(options = {}) {
         writeHead(value) { status = value; },
         end(value) { payload = value; },
     };
-    await handleApiRequest(requestFor(options), response);
+    await handleApiRequest(requestFor(options), response, { publicAccess });
     return { status, payload: JSON.parse(payload) };
 }
 afterEach(() => { vi.unstubAllEnvs(); });
@@ -47,9 +47,10 @@ describe('localhost-only access', () => {
         expect((await call({ path: '/api/not-found', method: 'POST', body: {} })).status).toBe(405);
         expect((await call({ path: '/api/ai/smart-ladder', method: 'POST', body: {} })).status).toBe(405);
     });
-    it('rejects deployment through Vercel even when the forwarded peer appears local', async () => {
-        vi.stubEnv('VERCEL', '1');
-        expect((await call()).status).toBe(403);
+    it('allows the public deployment entry point while still restricting HTTP methods', async () => {
+        const remote = { remoteAddress: '192.0.2.10', headers: { host: 'app.example', 'x-forwarded-for': '192.0.2.10' } };
+        expect((await call(remote, true)).status).toBe(404);
+        expect((await call({ ...remote, method: 'POST' }, true)).status).toBe(405);
     });
     it('does not allow HOST to change the production server bind address', async () => {
         vi.stubEnv('HOST', '0.0.0.0');

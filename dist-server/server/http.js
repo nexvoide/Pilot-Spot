@@ -7,13 +7,13 @@ import { getEconomySeries } from './economy-data.js';
 import { getFinnhubQuote } from './finnhub-data.js';
 import { getCryptoSizes, getCryptoGlobalSize, getCompanySize, getListedEquitySize } from './market-sizes.js';
 const service = new MarketDataService();
-export async function handleApiRequest(request, response) {
+export async function handleApiRequest(request, response, options = {}) {
     const requestId = request.headers['x-request-id']?.toString() || randomUUID();
     const startedAt = performance.now();
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     await requestContext.run({ endpoint: requestUrl.pathname, requestId }, async () => {
         try {
-            if (process.env.VERCEL || !isLocalRequest(request))
+            if (!options.publicAccess && !isLocalRequest(request))
                 throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
             if (request.method !== 'GET') {
                 throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');

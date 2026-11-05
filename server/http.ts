@@ -13,6 +13,7 @@ const service = new MarketDataService();
 export async function handleApiRequest(
   request: IncomingMessage,
   response: ServerResponse,
+  options: { publicAccess?: boolean } = {},
 ): Promise<void> {
   const requestId = request.headers['x-request-id']?.toString() || randomUUID();
   const startedAt = performance.now();
@@ -20,7 +21,7 @@ export async function handleApiRequest(
 
   await requestContext.run({ endpoint: requestUrl.pathname, requestId }, async () => {
     try {
-      if (process.env.VERCEL || !isLocalRequest(request)) throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
+      if (!options.publicAccess && !isLocalRequest(request)) throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
       if (request.method !== 'GET') {
         throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');
       }

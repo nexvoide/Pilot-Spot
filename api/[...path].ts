@@ -5,5 +5,5 @@ export default async function handler(
   request: IncomingMessage,
   response: ServerResponse,
 ): Promise<void> {
-  await handleApiRequest(request, response);
+  await handleApiRequest(request, response, { publicAccess: true });
 }
