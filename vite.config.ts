@@ -3,9 +3,24 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vitest/config';
 import { VitePWA } from 'vite-plugin-pwa';
+import { isLocalRequest } from './server/local-access';
+
+function localOnly() {
+  const guard = (request: import('node:http').IncomingMessage, response: import('node:http').ServerResponse, next: () => void) => {
+    if (isLocalRequest(request)) return next();
+    response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+    response.end('Local access only.');
+  };
+  return {
+    name: 'local-only',
+    configureServer(server: import('vite').ViteDevServer) { server.middlewares.use(guard); },
+    configurePreviewServer(server: import('vite').PreviewServer) { server.middlewares.use(guard); },
+  };
+}
 
 export default defineConfig({
   plugins: [
+    localOnly(),
     react(),
     tailwindcss(),
     VitePWA({
@@ -44,6 +59,7 @@ export default defineConfig({
     },
   },
   server: {
+    host: '127.0.0.1',
     proxy: {
       '/api': {
         changeOrigin: true,
@@ -51,6 +67,7 @@ export default defineConfig({
       },
     },
   },
+  preview: { host: '127.0.0.1' },
   test: {
     environment: 'jsdom',
     exclude: ['dist/**', 'dist-server/**', 'e2e/**', 'node_modules/**'],

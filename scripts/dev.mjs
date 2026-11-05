@@ -1,4 +1,8 @@
 import { spawn } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { loadEnvFile } from 'node:process';
+
+if (existsSync('.env.local')) loadEnvFile('.env.local');
 
 const api = spawn('npx', ['tsx', 'watch', 'server/index.ts'], { stdio: 'inherit' });
 const client = spawn('npx', ['vite'], { stdio: 'inherit' });

@@ -1,4 +1,4 @@
-import Decimal from './financial-decimal';
+import Decimal from './financial-decimal.js';
 
 export interface SymbolFilters {
   tickSize: string;

@@ -3,6 +3,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ApiError, UpstreamError } from './errors.js';
 import { MarketDataService } from './market-data-service.js';
 import { requestContext } from './request-context.js';
+import { isLocalRequest } from './local-access.js';
+import { getEconomySeries } from './economy-data.js';
+import { getFinnhubQuote } from './finnhub-data.js';
+import { getCryptoSizes, getCryptoGlobalSize, getCompanySize, getListedEquitySize } from './market-sizes.js';
 
 const service = new MarketDataService();
 
@@ -16,6 +20,7 @@ export async function handleApiRequest(
 
   await requestContext.run({ endpoint: requestUrl.pathname, requestId }, async () => {
     try {
+      if (process.env.VERCEL || !isLocalRequest(request)) throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
       if (request.method !== 'GET') {
         throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');
       }
@@ -49,6 +54,13 @@ export async function handleApiRequest(
 }
 
 async function route(url: URL): Promise<unknown> {
+  if (url.pathname === '/api/economy/equity-size') return getListedEquitySize(url.searchParams.get('region') ?? '');
+  if (url.pathname === '/api/economy/crypto-sizes') return getCryptoSizes();
+  if (url.pathname === '/api/economy/crypto-global-size') return getCryptoGlobalSize();
+  if (url.pathname === '/api/economy/company-size') return getCompanySize(url.searchParams.get('symbol') ?? '');
+  if (url.pathname === '/api/economy/quote') return getFinnhubQuote(url.searchParams.get('symbol') ?? '');
+  if (url.pathname === '/api/economy/series') return getEconomySeries(url.searchParams.get('series') ?? '');
+
   if (url.pathname === '/api/health') {
     let probeSucceeded = false;
     try {

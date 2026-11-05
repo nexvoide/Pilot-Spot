@@ -1,11 +1,11 @@
-import { analysisConfig, type AnalysisConfig } from '@/lib/analysis/config';
+import { analysisConfig, type AnalysisConfig } from './config.js';
 import {
   calculateAtr,
   calculateEma,
   calculateRsi,
   lastDefinedValue,
-} from '@/lib/analysis/indicators';
-import { identifyMarketStructure, identifyPriceZones } from '@/lib/analysis/structure';
+} from './indicators.js';
+import { identifyMarketStructure, identifyPriceZones } from './structure.js';
 import type {
   AnalysisTimeframe,
   Confidence,
@@ -14,8 +14,8 @@ import type {
   PriceZone,
   TimeframeAnalysis,
   TrendDirection,
-} from '@/lib/analysis/types';
-import type { MarketCandle } from '@/lib/binance/types';
+} from './types.js';
+import type { MarketCandle } from '../binance/types.js';
 
 type CandleSeries = Record<AnalysisTimeframe, MarketCandle[]>;
 

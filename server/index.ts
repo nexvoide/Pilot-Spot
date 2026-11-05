@@ -4,10 +4,12 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve } from 'node:path';
 import { serverConfig } from './config.js';
 import { handleApiRequest } from './http.js';
+import { isLocalRequest } from './local-access.js';
 
 const staticRoot = resolve(process.cwd(), 'dist');
 
 const server = createServer(async (request, response) => {
+  if (!isLocalRequest(request)) { response.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' }); response.end('Local access only.'); return; }
   const pathname = new URL(request.url ?? '/', 'http://localhost').pathname;
 
   if (pathname.startsWith('/api/')) {

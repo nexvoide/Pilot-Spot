@@ -2,13 +2,36 @@ import { randomUUID } from 'node:crypto';
 import { ApiError, UpstreamError } from './errors.js';
 import { MarketDataService } from './market-data-service.js';
 import { requestContext } from './request-context.js';
+import { AiIntelligenceService } from './ai-service.js';
 const service = new MarketDataService();
+const aiService = new AiIntelligenceService(service);
 export async function handleApiRequest(request, response) {
     const requestId = request.headers['x-request-id']?.toString() || randomUUID();
     const startedAt = performance.now();
     const requestUrl = new URL(request.url ?? '/', 'http://localhost');
     await requestContext.run({ endpoint: requestUrl.pathname, requestId }, async () => {
         try {
+            if (request.method === 'POST' && (requestUrl.pathname === '/api/ai/smart-ladder' || requestUrl.pathname === '/api/ai/smart-ladder/cache')) {
+                const origin = request.headers.origin;
+                if ((origin && new URL(origin).host !== request.headers.host) || !request.headers['content-type']?.toLowerCase().startsWith('application/json')) {
+                    throw new ApiError('Invalid request origin or content type.', 403, 'INVALID_ORIGIN');
+                }
+                const body = await readJsonBody(request);
+                let payload;
+                if (requestUrl.pathname.endsWith('/cache')) {
+                    payload = aiService.getCachedSmartLadder(body);
+                }
+                else {
+                    if (typeof body !== 'object' || body === null || Array.isArray(body))
+                        throw new ApiError('Invalid Smart Ladder request.', 400, 'AI_INVALID_REQUEST');
+                    const { regenerate, ...settings } = body;
+                    if (regenerate !== undefined && typeof regenerate !== 'boolean')
+                        throw new ApiError('Invalid Smart Ladder request.', 400, 'AI_INVALID_REQUEST');
+                    payload = await aiService.generateSmartLadder(settings, regenerate === true);
+                }
+                sendJson(response, 200, payload, requestId);
+                return;
+            }
             if (request.method !== 'GET') {
                 throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');
             }
@@ -33,6 +56,20 @@ export async function handleApiRequest(request, response) {
             });
         }
     });
+}
+async function readJsonBody(request) {
+    let body = '';
+    for await (const chunk of request) {
+        body += String(chunk);
+        if (body.length > 4096)
+            throw new ApiError('Request body is too large.', 413, 'BODY_TOO_LARGE');
+    }
+    try {
+        return JSON.parse(body);
+    }
+    catch {
+        throw new ApiError('Invalid JSON body.', 400, 'INVALID_JSON');
+    }
 }
 async function route(url) {
     if (url.pathname === '/api/health') {

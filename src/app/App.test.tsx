@@ -51,6 +51,13 @@ describe('App', () => {
     expect(screen.queryByRole('list', { name: /buying levels/i })).not.toBeInTheDocument();
     expect(screen.queryByRole('list', { name: /take-profit targets/i })).not.toBeInTheDocument();
   });
+  it('keeps the normal ladders available with stored preferences', () => {
+    window.localStorage.setItem('spot-ladder-analyzer:preferences', JSON.stringify({ version: 1, globalCapital: '1000', ladderMode: 'balanced' }));
+    render(<AppProviders><App /></AppProviders>);
+    fireEvent.click(screen.getByRole('button', { name: /open sui analysis/i }));
+    expect(screen.getByRole('heading', { name: /buying ladder/i })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /take-profit ladder/i })).toBeInTheDocument();
+  });
   it('renders the application foundation', () => {
     render(
       <AppProviders>

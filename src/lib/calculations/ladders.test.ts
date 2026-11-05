@@ -72,9 +72,9 @@ function expectCompletePlan(ladder: ReturnType<typeof buildTechnicalLadder>) {
   expect(ladder.takeProfitTargets).toHaveLength(4);
   expect(ladder.averageEntry).not.toBeNull();
   expect(ladder.invalidationLevel).not.toBeNull();
-  expect(ladder.buyingLevels.reduce((total, level) => total + level.allocation, 0)).toBe(1_000);
+  expect(ladder.buyingLevels.reduce((total, level) => total + level.allocation, 0) * 1.001).toBeCloseTo(1_000, 8);
   expect(ladder.buyingLevels.every((level) => level.allocationPercent === 25)).toBe(true);
-  expect(ladder.buyingLevels.every((level) => level.allocation === 250)).toBe(true);
+  expect(ladder.buyingLevels.every((level) => Math.abs(level.allocation * 1.001 - 250) < 1e-8)).toBe(true);
   expect(ladder.takeProfitTargets.map((target) => target.allocationPercent)).toEqual([
     20, 30, 30, 20,
   ]);
@@ -101,6 +101,11 @@ function expectCompletePlan(ladder: ReturnType<typeof buildTechnicalLadder>) {
   expect(ladder.takeProfitSummary?.totalEstimatedNetProfit).toBeCloseTo(
     ladder.takeProfitTargets.reduce((total, target) => total + target.estimatedNetProfit, 0),
     10,
+  );
+  expect(ladder.takeProfitSummary!.estimatedTotalNetProceeds - ladder.takeProfitSummary!.totalInvestedCapital)
+    .toBeCloseTo(ladder.takeProfitSummary!.totalEstimatedNetProfit, 8);
+  expect(ladder.takeProfitSummary!.totalEstimatedNetReturnPercent).toBeCloseTo(
+    ladder.takeProfitSummary!.totalEstimatedNetProfit / ladder.takeProfitSummary!.totalInvestedCapital * 100, 8,
   );
 }
 
@@ -211,11 +216,22 @@ describe('buildTechnicalLadder', () => {
     expect(ladder.reason).toBeNull();
     const acquired = ladder.buyingLevels.reduce((sum, level) => sum + level.quantity, 0);
     const sold = ladder.takeProfitTargets.reduce((sum, target) => sum + target.quantity, 0);
-    expect(sold).toBeLessThanOrEqual(acquired + 1e-12);
+    expect(sold).toBeCloseTo(acquired, 9);
     expect(ladder.takeProfitSummary?.unsoldQuantity).toBeCloseTo(acquired - sold, 9);
     expect(ladder.takeProfitTargets.map((target) => target.allocationPercent)).toEqual([
       20, 30, 30, 20,
     ]);
+    const grossBuys = ladder.buyingLevels.reduce((sum, level) => sum + level.price * level.quantity, 0);
+    const grossSales = ladder.takeProfitTargets.reduce((sum, target) => sum + target.price * target.quantity, 0);
+    expect(ladder.buyingLevels.every((level) => level.allocation * 1.001 <= 250)).toBe(true);
+    expect(ladder.buyingSummary!.totalPlannedInvestment).toBeCloseTo(grossBuys * 1.001, 8);
+    expect(ladder.averageEntry).toBeCloseTo(grossBuys / acquired, 8);
+    expect(ladder.takeProfitSummary!.estimatedFees).toBeCloseTo((grossBuys + grossSales) * 0.001, 8);
+    expect(ladder.takeProfitSummary!.estimatedTotalNetProceeds).toBeCloseTo(grossSales * 0.999, 8);
+    expect(ladder.takeProfitSummary!.totalEstimatedNetProfit).toBeCloseTo(grossSales * 0.999 - grossBuys * 1.001, 8);
+    expect(ladder.takeProfitTargets.slice(0, 3).every((target, index) =>
+      target.quantity <= acquired * [0.2, 0.3, 0.3][index] + 1e-12,
+    )).toBe(true);
     expect(ladder.buyingLevels.every((level) => level.riskReward !== null)).toBe(true);
   });
 

@@ -1,11 +1,11 @@
-import type { MultiTimeframeAnalysis, PriceZone, TimeframeAnalysis } from '@/lib/analysis/types';
-import Decimal from './financial-decimal';
+import type { MultiTimeframeAnalysis, PriceZone, TimeframeAnalysis } from '../analysis/types.js';
+import Decimal from './financial-decimal.js';
 import {
   quantizePrice,
   quantizeQuantity,
   validateOrder,
   type SymbolFilters,
-} from './exchange-filters';
+} from './exchange-filters.js';
 
 export interface BuyingLevel {
   allocation: number;
@@ -219,7 +219,9 @@ function buildTechnicalLadderInternal(
   );
   let remainingQuantity = totalQuantity;
   const targetQuantity = (index: number) => {
-    const quantity = totalQuantity.mul(TAKE_PROFIT_ALLOCATION_PERCENTAGES[index]).div(100);
+    const quantity = index === MAX_TAKE_PROFIT_TARGETS - 1
+      ? remainingQuantity
+      : totalQuantity.mul(TAKE_PROFIT_ALLOCATION_PERCENTAGES[index]).div(100);
     const available = Decimal.min(quantity, remainingQuantity);
     const result = filters ? quantizeQuantity(available, filters.stepSize) : available;
     remainingQuantity = remainingQuantity.minus(result);
@@ -475,7 +477,8 @@ function allocateBuyingLevels(
   filters?: SymbolFilters | null,
 ): DecimalBuyingLevel[] {
   const levels = candidates.map((candidate) => {
-    const budget = new Decimal(capital).div(MAX_BUYING_LEVELS);
+    const budget = new Decimal(capital).div(MAX_BUYING_LEVELS)
+      .div(new Decimal(1).plus(new Decimal(ESTIMATED_FEE_PERCENT).div(100)));
     const quantity = filters
       ? quantizeQuantity(budget.div(candidate.price), filters.stepSize)
       : budget.div(candidate.price);
@@ -667,7 +670,7 @@ function validateTechnicalLadder(
     !targetSpacingIsValid ||
     (requireExactPresentation && !displayedOrdersAreExact) ||
     allocations.gt(capital) ||
-    targetQuantity.gt(boughtQuantity)
+    targetQuantity.minus(boughtQuantity).gt(boughtQuantity.mul('1e-70'))
   ) {
     return emptyLadder(
       'The market snapshot could not produce a valid four-level hypothetical plan.',
@@ -741,7 +744,7 @@ function buildBuyingSummary(
           .div(quantity)
       : averageEntry,
     lowestLevel,
-    totalPlannedInvestment: investment,
+    totalPlannedInvestment: investment.mul(new Decimal(1).plus(new Decimal(ESTIMATED_FEE_PERCENT).div(100))),
     totalQuantity: quantity,
     weightedAverageEntry: averageEntry,
   };
@@ -754,23 +757,14 @@ function buildTakeProfitSummary(
   acquiredQuantity: Decimal,
 ) {
   const fee = new Decimal(ESTIMATED_FEE_PERCENT).div(100);
-  const estimatedFees = targets.reduce(
-    (total, target) =>
-      total.plus(
-        new Decimal(target.quantity).mul(new Decimal(averageEntry).plus(target.price)).mul(fee),
-      ),
-    new Decimal(0),
-  );
-  const totalEstimatedNetProfit = targets.reduce(
-    (total, target) => total.plus(target.estimatedNetProfit),
-    new Decimal(0),
-  );
   const grossProceeds = targets.reduce(
     (total, target) => total.plus(new Decimal(target.quantity).mul(target.price)),
     new Decimal(0),
   );
   const estimatedTotalNetProceeds = grossProceeds.mul(new Decimal(1).minus(fee));
   const totalInvestedCapital = new Decimal(capital).mul(new Decimal(1).plus(fee));
+  const estimatedFees = capital.plus(grossProceeds).mul(fee);
+  const totalEstimatedNetProfit = estimatedTotalNetProceeds.minus(totalInvestedCapital);
 
   return {
     unsoldQuantity: Decimal.max(

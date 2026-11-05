@@ -5,6 +5,7 @@ import { useMarketConnection } from '@/features/market-data/useMarketConnection'
 const navigationItems = [
   { label: 'Setup capital', shortLabel: 'Capital', to: '/setup-capital' },
   { label: 'Coins dashboard', shortLabel: 'Markets', to: '/coins' },
+  { label: 'World Economy Flow', shortLabel: 'World', to: '/world-economy' },
   { label: 'Crypto news', shortLabel: 'News', to: '/news' },
   { label: 'Extra tools', shortLabel: 'Tools', to: '/calculators/average-buy' },
 ] as const;

@@ -27,6 +27,7 @@ import { useLiveTickers } from '@/features/market-data/useLiveTickers';
 import { useOnlineStatus } from '@/features/market-data/useOnlineStatus';
 import type { LiveTicker } from '@/lib/binance/websocket';
 import { defaultCoins } from '@/features/dashboard/default-coins';
+import { displayProfit, displayTargetProfits } from '@/features/dashboard/profit-display';
 import type { MultiTimeframeAnalysis } from '@/lib/analysis/types';
 import type { MarketTicker } from '@/lib/api/market-data';
 
@@ -219,6 +220,7 @@ export function DashboardPage() {
     livePriceIsCurrent && !ladderRecalculationPending && liveLadderValidation.valid
       ? technicalLadder
       : null;
+  const targetDisplayProfits = displayTechnicalLadder ? displayTargetProfits(displayTechnicalLadder.takeProfitTargets, displayTechnicalLadder.takeProfitSummary) : [];
   const ladderIsLoading = capitalValue !== null && !marketSnapshotQuery.isError &&
     !technicalLadder?.reason && (marketSnapshotQuery.isLoading || ladderRecalculationPending);
   const ladderBadge = capitalValue === null
@@ -619,19 +621,12 @@ export function DashboardPage() {
               {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Buying levels" aria-busy={ladderIsLoading}>
                 {displayTechnicalLadder && displayTechnicalLadder.buyingLevels.length > 0
                   ? displayTechnicalLadder.buyingLevels.map((level, index) => (
-                      <li key={level.price} data-quantity={level.quantity}>
-                        <span className="level-number">BL{index + 1}</span>
-                        <span className="level-price">
-                          {formatOrderPrice(
-                            level.price,
-                            marketSnapshotQuery.data?.filters?.tickSize,
-                          )}{' '}
-                          USDT
-                        </span>
-                        <span className="level-allocation">
-                          {formatCurrency(level.allocation)} · {level.allocationPercent}%
-                          {level.estimated ? ' · Estimated' : ''}
-                        </span>
+                      <li className="order-row buy-order" key={level.price} data-quantity={level.quantity}>
+                        <span className="order-index"><span>BUY</span><strong>BL{index + 1}</strong></span>
+                        <span className="order-value order-price"><span>Limit price</span><strong>{formatOrderPrice(level.price, marketSnapshotQuery.data?.filters?.tickSize)} <small>USDT</small></strong>{level.estimated && <em>Estimated level</em>}</span>
+                        <span className="order-value"><span>Amount · before fees</span><strong>{formatCurrency(level.allocation)}</strong></span>
+                        <span className="order-value"><span>Quantity</span><strong>{level.quantity}</strong></span>
+                        <span className="order-share"><strong>{level.allocationPercent}%</strong><span>of budget</span></span>
                       </li>
                     ))
                   : pendingLevels.map((level) => (
@@ -643,53 +638,26 @@ export function DashboardPage() {
                     ))}
               </ol>}
               {displayTechnicalLadder?.buyingSummary && (
-                <dl className="ladder-summary">
-                  <div>
-                    <dt>Validated current price</dt>
-                    <dd>{formatPrice(displayTechnicalLadder.buyingSummary.currentPrice)} USDT</dd>
+                <section className="plan-overview buy-overview" aria-label="Buying summary">
+                  <div className="overview-heading"><div><span className="overview-eyebrow">POSITION OVERVIEW</span><h3>If all buys fill</h3></div><span className="overview-tag">Estimated</span></div>
+                  <div className="profit-highlight average-buy-highlight">
+                    <div><span>Average buy price · incl. buy fees</span><strong>{formatPrice(displayTechnicalLadder.buyingSummary.estimatedAverageEntryIncludingFees)} <small>USDT</small></strong></div>
                   </div>
-                  <div>
-                    <dt>BL1–BL4 coverage</dt>
-                    <dd>{formatPercent(displayTechnicalLadder.buyingSummary.coveragePercent)}</dd>
-                  </div>
-                  <div>
-                    <dt>Distances from price</dt>
-                    <dd>
-                      {displayTechnicalLadder.buyingSummary.distancesFromCurrentPercent
-                        .map((distance, index) => `BL${index + 1} ${formatPercent(distance)}`)
-                        .join(' · ')}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Lowest buy</dt>
-                    <dd>{formatPrice(displayTechnicalLadder.buyingSummary.lowestLevel)} USDT</dd>
-                  </div>
-                  <div>
-                    <dt>Total planned investment</dt>
-                    <dd>
-                      {formatCurrency(displayTechnicalLadder.buyingSummary.totalPlannedInvestment)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Estimated quantity if all buys fill</dt>
-                    <dd>{displayTechnicalLadder.buyingSummary.totalQuantity.toFixed(8)}</dd>
-                  </div>
-                  <div>
-                    <dt>Weighted average entry</dt>
-                    <dd>
-                      {formatPrice(displayTechnicalLadder.buyingSummary.weightedAverageEntry)} USDT
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Average entry including estimated buy fee</dt>
-                    <dd>
-                      {formatPrice(
-                        displayTechnicalLadder.buyingSummary.estimatedAverageEntryIncludingFees,
-                      )}{' '}
-                      USDT
-                    </dd>
-                  </div>
-                </dl>
+                  <dl className="overview-metrics">
+                    <div><dt>Total invested <span>incl. buy fees</span></dt><dd>{formatCurrency(displayTechnicalLadder.buyingSummary.totalPlannedInvestment)}</dd></div>
+                    <div><dt>Total quantity</dt><dd>{displayTechnicalLadder.buyingSummary.totalQuantity.toString()}</dd></div>
+                  </dl>
+                  <details className="overview-details">
+                    <summary><span>View buying details</span><span aria-hidden="true">+</span></summary>
+                    <dl className="overview-breakdown">
+                      <div><dt>Validated current price</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.currentPrice)} USDT</dd></div>
+                      <div><dt>BL1–BL4 coverage</dt><dd>{formatPercent(displayTechnicalLadder.buyingSummary.coveragePercent)}</dd></div>
+                      <div><dt>Distances from price</dt><dd>{displayTechnicalLadder.buyingSummary.distancesFromCurrentPercent.map((distance, index) => `BL${index + 1} ${formatPercent(distance)}`).join(' · ')}</dd></div>
+                      <div><dt>Lowest buy</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.lowestLevel)} USDT</dd></div>
+                      <div><dt>Weighted average before fees</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.weightedAverageEntry)} USDT</dd></div>
+                    </dl>
+                  </details>
+                </section>
               )}
             </article>
 
@@ -719,22 +687,12 @@ export function DashboardPage() {
               {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Take-profit targets" aria-busy={ladderIsLoading}>
                 {displayTechnicalLadder && displayTechnicalLadder.takeProfitTargets.length > 0
                   ? displayTechnicalLadder.takeProfitTargets.map((target, index) => (
-                      <li key={target.price} data-quantity={target.quantity}>
-                        <span className="level-number target-number">TP{index + 1}</span>
-                        <span className="level-price">
-                          {formatOrderPrice(
-                            target.price,
-                            marketSnapshotQuery.data?.filters?.tickSize,
-                          )}{' '}
-                          USDT
-                        </span>
-                        <span className="level-allocation target-allocation">
-                          <span>{target.allocationPercent}% planned sell{target.estimated ? ' · Estimated' : ''}</span>
-                          <strong>
-                            {target.outcome === 'profit' ? 'Est. net ' : 'Recovery estimate '}
-                            {formatCurrency(target.estimatedNetProfit)}
-                          </strong>
-                        </span>
+                      <li className="order-row sell-order" key={target.price} data-quantity={target.quantity}>
+                        <span className="order-index"><span>SELL</span><strong>TP{index + 1}</strong></span>
+                        <span className="order-value order-price"><span>Target price</span><strong>{formatOrderPrice(target.price, marketSnapshotQuery.data?.filters?.tickSize)} <small>USDT</small></strong>{target.estimated && <em>Estimated level</em>}</span>
+                        <span className="order-value"><span>Quantity to sell</span><strong>{target.quantity}</strong></span>
+                        <span className="order-value"><span>Est. net profit</span><strong>{formatCurrency(targetDisplayProfits[index])}</strong></span>
+                        <span className="order-share"><strong>{target.allocationPercent}%</strong><span>planned</span></span>
                       </li>
                     ))
                   : pendingTargets.map((target) => (
@@ -746,51 +704,27 @@ export function DashboardPage() {
                     ))}
               </ol>}
               {displayTechnicalLadder?.takeProfitSummary && (
-                <dl className="ladder-summary">
-                  <div>
-                    <dt>Average entry if filled</dt>
-                    <dd>
-                      {formatPrice(displayTechnicalLadder.takeProfitSummary.weightedAverageEntry)}{' '}
-                      USDT
-                    </dd>
+                <section className="plan-overview sell-overview" aria-label="Take-profit summary">
+                  <div className="overview-heading"><div><span className="overview-eyebrow">PROJECTED OUTCOME</span><h3>If all targets fill</h3></div><span className="overview-tag">After fees</span></div>
+                  <div className="profit-highlight">
+                    <div><span>Estimated net profit</span><strong>{formatCurrency(displayProfit(displayTechnicalLadder.takeProfitSummary))}</strong></div>
+                    <div className="profit-return"><span>Net return</span><strong>{formatPercent(displayTechnicalLadder.takeProfitSummary.totalEstimatedNetReturnPercent)}</strong></div>
                   </div>
-                  <div>
-                    <dt>Total estimated net profit</dt>
-                    <dd>
-                      {formatCurrency(
-                        displayTechnicalLadder.takeProfitSummary.totalEstimatedNetProfit,
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Net return if all targets fill</dt>
-                    <dd>
-                      {formatPercent(
-                        displayTechnicalLadder.takeProfitSummary.totalEstimatedNetReturnPercent,
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Estimated fees included</dt>
-                    <dd>
-                      {formatCurrency(displayTechnicalLadder.takeProfitSummary.estimatedFees)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>Estimated total net proceeds</dt>
-                    <dd>
-                      {formatCurrency(
-                        displayTechnicalLadder.takeProfitSummary.estimatedTotalNetProceeds,
-                      )}
-                    </dd>
-                  </div>
-                  {displayTechnicalLadder.takeProfitSummary.unsoldQuantity > 0 && (
-                    <div>
-                      <dt>Unallocated quantity after rounding</dt>
-                      <dd>{displayTechnicalLadder.takeProfitSummary.unsoldQuantity.toString()}</dd>
-                    </div>
-                  )}
-                </dl>
+                  <dl className="outcome-metrics">
+                    <div><dt>Total invested</dt><dd>{formatCurrency(displayTechnicalLadder.takeProfitSummary.totalInvestedCapital)}</dd></div>
+                    <div><dt>Net proceeds</dt><dd>{formatCurrency(displayTechnicalLadder.takeProfitSummary.estimatedTotalNetProceeds)}</dd></div>
+                    <div><dt>Estimated fees</dt><dd>{formatCurrency(displayTechnicalLadder.takeProfitSummary.estimatedFees)}</dd></div>
+                  </dl>
+                  <p className="overview-assumption">Estimates assume full fills and a 0.1% fee on each side.</p>
+                  <details className="overview-details">
+                    <summary><span>View outcome details</span><span aria-hidden="true">+</span></summary>
+                    <dl className="overview-breakdown">
+                      <div><dt>Average entry before fees</dt><dd>{formatPrice(displayTechnicalLadder.takeProfitSummary.weightedAverageEntry)} USDT</dd></div>
+                      {displayTechnicalLadder.takeProfitSummary.unsoldQuantity > 0 && <div><dt>Unallocated quantity after rounding</dt><dd>{displayTechnicalLadder.takeProfitSummary.unsoldQuantity.toString()}</dd></div>}
+                    </dl>
+                    <p>Assumes all four buys and sells fill at the shown prices, with a 0.1% fee on each side paid in USDT. The final sell includes quantity left by rounding. Partial fills require recalculation from actual fills and fees.</p>
+                  </details>
+                </section>
               )}
             </article>
           </section>

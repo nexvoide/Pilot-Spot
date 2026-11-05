@@ -27,7 +27,7 @@ export const serverConfig = Object.freeze({
     process.env.BINANCE_FALLBACK_BASE_URL,
     'https://data-api.binance.vision',
   ),
-  host: process.env.HOST?.trim() || '127.0.0.1',
+  host: '127.0.0.1',
   metadataCacheTtlMs: readBoundedInteger(
     process.env.MARKET_DATA_METADATA_CACHE_TTL_MS,
     15 * 60_000,

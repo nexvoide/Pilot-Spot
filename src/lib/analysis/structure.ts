@@ -1,10 +1,10 @@
-import type { MarketCandle } from '@/lib/binance/types';
+import type { MarketCandle } from '../binance/types.js';
 import type {
   MarketStructure,
   PriceZone,
   StructurePoint,
   TrendDirection,
-} from '@/lib/analysis/types';
+} from './types.js';
 
 export function identifyMarketStructure(candles: MarketCandle[], window: number): MarketStructure {
   if (!Number.isInteger(window) || window < 1) {

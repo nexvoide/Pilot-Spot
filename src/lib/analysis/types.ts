@@ -1,4 +1,4 @@
-import type { MarketCandle } from '@/lib/binance/types';
+import type { MarketCandle } from '../binance/types.js';
 
 export type AnalysisTimeframe = '15m' | '1h' | '4h';
 export type Confidence = 'High' | 'Low' | 'Medium';

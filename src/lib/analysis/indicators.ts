@@ -1,4 +1,4 @@
-import type { MarketCandle } from '@/lib/binance/types';
+import type { MarketCandle } from '../binance/types.js';
 
 function assertPositiveInteger(value: number, name: string): void {
   if (!Number.isInteger(value) || value <= 0) {
