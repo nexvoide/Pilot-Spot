@@ -20,8 +20,8 @@ test('market strength supports crypto drilldown and time filters', async ({ page
 
 test('market strength shows five labeled representative price changes', async ({ page }) => {
   const now = Date.now(), end = now - 1000;
-  await page.route('**/api/economy/quote?*', (route) => route.fulfill({json:{price:110, previousClose:100, observedAt:now, fetchedAt:now}}));
-  await page.route('**/api/economy/series?*', (route) => route.fulfill({json:{observations:[{date:'2026-01-05',value:90},{date:'2026-01-02',value:100}],fetchedAt:now}}));
+  await page.route('**/api/economy-quote?*', (route) => route.fulfill({json:{price:110, previousClose:100, observedAt:now, fetchedAt:now}}));
+  await page.route('**/api/economy-series?*', (route) => route.fulfill({json:{observations:[{date:'2026-01-05',value:90},{date:'2026-01-02',value:100}],fetchedAt:now}}));
   await page.route('**/api/klines?*', (route) => route.fulfill({json:{candles:Array.from({length:7},(_,i)=>({openTime:end-(6-i)*14_400_000-14_399_999,closeTime:end-(6-i)*14_400_000,close:100+i})),candlesFetchedAt:now}}));
   await page.goto('/world-economy');
   const bubbles = page.getByLabel('Market bubbles');

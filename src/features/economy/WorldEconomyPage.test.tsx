@@ -11,8 +11,8 @@ describe('world economy navigator', () => {
     const candles = Array.from({length:7},(_,i)=>({openTime:end-(6-i)*14_400_000-14_399_999,closeTime:end-(6-i)*14_400_000,close:100+i}));
     vi.spyOn(globalThis,'fetch').mockImplementation(async (input) => {
       const url = String(input);
-      if (url.includes('/api/economy/quote')) return new Response(JSON.stringify({price:110,previousClose:100,observedAt:now,fetchedAt:now}));
-      if (url.includes('/api/economy/series')) return new Response(JSON.stringify({observations:[{date:'2026-01-05',value:90},{date:'2026-01-02',value:100}],fetchedAt:now}));
+      if (url.includes('/api/economy-quote')) return new Response(JSON.stringify({price:110,previousClose:100,observedAt:now,fetchedAt:now}));
+      if (url.includes('/api/economy-series')) return new Response(JSON.stringify({observations:[{date:'2026-01-05',value:90},{date:'2026-01-02',value:100}],fetchedAt:now}));
       if (url.includes('/api/klines')) return new Response(JSON.stringify({candles,candlesFetchedAt:now}));
       return new Response('',{status:503});
     });

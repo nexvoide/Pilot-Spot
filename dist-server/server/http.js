@@ -49,9 +49,9 @@ async function route(url) {
         return getCryptoGlobalSize();
     if (url.pathname === '/api/economy/company-size')
         return getCompanySize(url.searchParams.get('symbol') ?? '');
-    if (url.pathname === '/api/economy/quote')
+    if (url.pathname === '/api/economy-quote' || url.pathname === '/api/economy/quote')
         return getFinnhubQuote(url.searchParams.get('symbol') ?? '');
-    if (url.pathname === '/api/economy/series')
+    if (url.pathname === '/api/economy-series' || url.pathname === '/api/economy/series')
         return getEconomySeries(url.searchParams.get('series') ?? '');
     if (url.pathname === '/api/health') {
         let probeSucceeded = false;

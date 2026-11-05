@@ -9,7 +9,7 @@ const fredResponse = z.object({ observations: z.array(z.object({ date: z.string(
 
 export async function fetchMeasurement(kind: 'binance' | 'fred' | 'finnhub', id: string, period: Period, signal?: AbortSignal): Promise<Measurement | null> {
   if (kind === 'finnhub' && period !== '24H') return null;
-  const url = kind === 'binance' ? `/api/klines?symbol=${encodeURIComponent(id)}&interval=4h&limit=550` : kind === 'finnhub' ? `/api/economy/quote?symbol=${encodeURIComponent(id)}` : `/api/economy/series?series=${encodeURIComponent(id)}`;
+  const url = kind === 'binance' ? `/api/klines?symbol=${encodeURIComponent(id)}&interval=4h&limit=550` : kind === 'finnhub' ? `/api/economy-quote?symbol=${encodeURIComponent(id)}` : `/api/economy-series?series=${encodeURIComponent(id)}`;
   const response = await fetch(url, { signal });
   if (!response.ok) throw new Error(response.status === 429 || response.status === 503 ? 'Source unavailable or rate limited. Try again later.' : 'Source unavailable. Try again later.');
   const json: unknown = await response.json();
