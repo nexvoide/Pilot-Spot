@@ -86,7 +86,7 @@ async function route(url) {
         return service.getKlines(readSymbol(url), interval, limit);
     }
     if (url.pathname === '/api/market-snapshot') {
-        const limit = parseBoundedNumber(url.searchParams.get('limit'), 200, 2, 1_000);
+        const limit = parseBoundedNumber(url.searchParams.get('limit'), 200, 2, 4_000);
         return service.getMarketSnapshot(readSymbol(url), limit);
     }
     throw new ApiError('Endpoint not found.', 404, 'NOT_FOUND');

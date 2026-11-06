@@ -23,9 +23,9 @@ describe('storage helpers', () => {
     ).toBe('1000');
   });
   it('preserves capital when reading old or invalid mode settings', () => {
-    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000' })).toMatchObject({ globalCapital: '1000', ladderMode: 'balanced' });
-    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'unknown' })).toMatchObject({ globalCapital: '1000', ladderMode: 'balanced' });
-    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'extended' }).ladderMode).toBe('extended');
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000' })).toMatchObject({ globalCapital: '1000', method: 'zones', ladderMode: '15m', classicMode: 'balanced' });
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'unknown' })).toMatchObject({ globalCapital: '1000', ladderMode: '15m' });
+    expect(applicationPreferencesSchema.parse({ version: 1, globalCapital: '1000', ladderMode: 'extended' })).toMatchObject({ method: 'classic', classicMode: 'extended', ladderMode: '15m' });
   });
   it('round-trips JSON through a storage adapter', () => {
     const storage = createStorage();

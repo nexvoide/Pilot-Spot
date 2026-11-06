@@ -1,8 +1,12 @@
 import { createContext, useContext } from 'react';
-import type { LadderMode } from '@/lib/calculations/ladders';
+import type { LadderMode, LegacyMode } from '@/lib/calculations/ladders';
 
 export interface CapitalSettingsContextValue {
   globalCapital: string | null;
+  method: 'zones' | 'classic';
+  classicMode: LegacyMode;
+  setMethod: (method: 'zones' | 'classic') => void;
+  setClassicMode: (mode: LegacyMode) => void;
   ladderMode: LadderMode;
   setLadderMode: (mode: LadderMode) => void;
   setGlobalCapital: (capital: string | null) => void;

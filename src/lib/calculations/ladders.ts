@@ -1,4 +1,8 @@
-import type { MultiTimeframeAnalysis, PriceZone, TimeframeAnalysis } from '../analysis/types.js';
+import { classicBuyingCandidates, classicSpacing, classicTargetCandidates, type ClassicMode, type IndicatorZone } from './classic-ladder.js';
+import { scanPivotZones } from '../analysis/zone-scanner.js';
+import { clusterZones } from '../analysis/zone-clusters.js';
+import type { MarketCandle } from '../binance/types.js';
+import type { MultiTimeframeAnalysis } from '../analysis/types.js';
 import Decimal from './financial-decimal.js';
 import {
   quantizePrice,
@@ -96,35 +100,19 @@ type DecimalTakeProfitTarget = Omit<
 };
 
 const ESTIMATED_FEE_PERCENT = 0.1;
-const MAX_BUYING_LEVELS = 4;
-const MAX_TAKE_PROFIT_TARGETS = 4;
-const TAKE_PROFIT_ALLOCATION_PERCENTAGES = [20, 30, 30, 20] as const;
-const EXTENDED_LEVEL_MULTIPLIERS = [0.9, 2.1, 3.5, 5.2] as const;
-const RECENT_RANGE_CANDLES = 96;
-
-export type LadderMode = 'aggressive' | 'balanced' | 'extended';
-
-const BUY_LEVEL_MULTIPLIERS: Record<LadderMode, readonly number[]> = {
-  aggressive: [0.55, 1.75, 3, 4.2],
-  balanced: [0.9, 2.1, 3.4, 4.7],
-  extended: EXTENDED_LEVEL_MULTIPLIERS,
-};
-
-const MODE_SPACING: Record<LadderMode, number> = {
-  aggressive: 0.65,
-  balanced: 1,
-  extended: 1.4,
-};
+export type LadderMode = '15m' | '4h' | '1d';
+export type LegacyMode = ClassicMode;
 
 export function buildTechnicalLadder(
   analysis: MultiTimeframeAnalysis,
   capital: Decimal.Value,
   referencePrice: number = analysis.timeframes['15m'].latestClose ?? Number.NaN,
   filters?: SymbolFilters | null,
-  mode: LadderMode = 'balanced',
+  mode: LadderMode | LegacyMode = 'balanced',
+  dailyCandles?: MarketCandle[],
 ): TechnicalLadder {
   try {
-    return buildTechnicalLadderInternal(analysis, capital, referencePrice, filters, mode);
+    return buildTechnicalLadderInternal(analysis, capital, referencePrice, filters, mode, dailyCandles);
   } catch {
     return emptyLadder('The exchange constraints could not be applied to this hypothetical plan.');
   }
@@ -135,7 +123,8 @@ function buildTechnicalLadderInternal(
   capital: Decimal.Value,
   referencePrice: number = analysis.timeframes['15m'].latestClose ?? Number.NaN,
   filters?: SymbolFilters | null,
-  mode: LadderMode = 'balanced',
+  mode: LadderMode | LegacyMode = 'balanced',
+  dailyCandles?: MarketCandle[],
 ): TechnicalLadder {
   if (filters === null)
     return emptyLadder(
@@ -145,44 +134,63 @@ function buildTechnicalLadderInternal(
     return emptyLadder('Enter a capital amount greater than zero to prepare a plan.');
   }
 
-  const primary = analysis.timeframes['15m'];
+  const classic = mode === 'aggressive' || mode === 'balanced' || mode === 'extended';
+  const classicMode: ClassicMode = classic ? mode : 'balanced';
+  const spacing = classic ? classicSpacing(analysis.timeframes['15m'], referencePrice, classicMode) : null;
+  if (classic && !spacing) return emptyLadder('Reliable current price and volatility data are required to prepare levels.');
+  const timeframe = mode === '4h' || mode === '1d' ? mode : '15m';
+  const candles = timeframe === '1d' ? dailyCandles : analysis.timeframes[timeframe].candles;
+  // Analysis timeframes already contain closed candles; the scanner excludes the live candle.
+  const series = timeframe === '1d' ? candles : candles ? [...candles, candles[candles.length - 1]] : undefined;
+  const zones = !classic && series && filters ? scanPivotZones(series, filters.tickSize) : []; 
+  const classicIndicatorZones: IndicatorZone[] = classic && filters
+    ? (['15m', '1h', '4h'] as const).flatMap((interval) => {
+        const closed = analysis.timeframes[interval].candles;
+        if (closed.length < 32) return [];
+        return scanPivotZones([...closed, closed[closed.length - 1]], filters.tickSize)
+          .map((zone) => ({ ...zone, timeframe: interval }));
+      })
+    : [];
+  const zoneCandidates = (kind: 'support' | 'resistance') => {
+    // Group only eligible centers: an area on the other side of price cannot
+    // turn a valid limit into an immediate order.
+    if (!filters) return [];
+    const eligible = zones.filter((zone) => zone.kind === kind && zone.price > 0 &&
+      (kind === 'support' ? zone.price < referencePrice : zone.price > referencePrice));
+    const seen = new Set<string>();
+    return clusterZones(eligible).flatMap((cluster) => {
+      // Use the lowest actual pivot center in each group. For buys this favors
+      // a lower entry; for targets it takes the first resistance in the area.
+      const center = Math.min(...cluster.zones.map((zone) => zone.price));
+      const price = quantizePrice(new Decimal(center), filters.tickSize, kind === 'support' ? 'buy' : 'sell');
+      const key = price.toString();
+      if (seen.has(key) || (kind === 'support' ? price.gte(referencePrice) : price.lte(referencePrice))) return [];
+      seen.add(key);
+      const broken = cluster.zones.filter((zone) => zone.broken).length;
+      const active = cluster.zones.length - broken;
+      return [{ price, lower: cluster.lower, estimated: false, score: 1, reasons: [
+        `${timeframe.toUpperCase()} ${kind} group: ${active} active, ${broken} broken`,
+        `Combined area ${cluster.lower} – ${cluster.upper}`,
+        `Included centers: ${cluster.zones.map((zone) => `${zone.price} (${zone.broken ? 'broken' : 'active'})`).join(', ')}`,
+        `Lowest zone center of ${cluster.zones.length} overlapping area${cluster.zones.length === 1 ? '' : 's'}`,
+      ] }];
+    }).sort((a, b) => kind === 'support' ? b.price.comparedTo(a.price) : a.price.comparedTo(b.price)).slice(0, 4);
+  };
+  if (!classic && (!series || !Number.isFinite(referencePrice) || referencePrice <= 0 || !filters)) {
+    return emptyLadder('Current price, exchange filters, and selected timeframe candles are required.');
+  }
   const currentPrice = referencePrice;
-  const atr = primary.atr;
-  if (
-    currentPrice === null ||
-    atr === null ||
-    !Number.isFinite(currentPrice) ||
-    !Number.isFinite(atr) ||
-    currentPrice <= 0 ||
-    atr <= 0
-  ) {
-    return emptyLadder(
-      'Reliable current price and volatility data are required to prepare levels.',
-    );
-  }
-
-  const baselineSpacing = calculateAdaptiveSpacing(primary, currentPrice, atr);
-  const modeMultiplier = MODE_SPACING[mode];
-  if (modeMultiplier === undefined) return emptyLadder('The selected planning mode is invalid.');
-  const spacing = baselineSpacing * modeMultiplier;
-  const targetSpacing = mode === 'extended'
-    ? spacing
-    : calculateTargetSpacing(currentPrice, baselineSpacing) * modeMultiplier;
-  let candidates = selectBuyingCandidates(analysis, currentPrice, spacing, mode);
-  if (filters)
-    candidates = candidates.map((candidate) => ({
-      ...candidate,
-      price: quantizePrice(candidate.price, filters.tickSize, 'buy'),
-    }));
-  if (candidates.length !== MAX_BUYING_LEVELS) {
-    return emptyLadder('Reliable market data is insufficient to prepare four buying levels.');
-  }
-
-  const invalidation = deriveInvalidation(
-    analysis.assessment.invalidationLevel,
-    candidates.at(-1)?.price ?? null,
-    atr,
-  );
+  let candidates = classic && spacing ? classicBuyingCandidates(analysis, referencePrice, spacing.spacing, classicMode, classicIndicatorZones).map((candidate) => ({ ...candidate, lower: candidate.price.toNumber() })) : zoneCandidates('support');
+  if (classic && filters) candidates = candidates.map((candidate) => ({ ...candidate, price: quantizePrice(candidate.price, filters.tickSize, 'buy') }));
+  if (!candidates.length || (classic && candidates.length !== 4)) return emptyLadder(classic ? 'Reliable market data is insufficient to prepare four buying levels.' : `No ${timeframe} support zones are available below the current price.`);
+  const deepest = candidates[candidates.length - 1];
+  const assessed = analysis.assessment.invalidationLevel;
+  const atr = analysis.timeframes['15m'].atr;
+  const invalidation = classic && atr !== null
+    ? assessed !== null && assessed > 0 && new Decimal(assessed).lt(deepest.price)
+      ? new Decimal(assessed)
+      : Decimal.max(deepest.price.minus(new Decimal(atr).mul('0.75')), deepest.price.mul('0.01'))
+    : Decimal.max(new Decimal(filters!.tickSize), new Decimal(deepest.lower).minus(filters!.tickSize));
   const buyingLevels = allocateBuyingLevels(candidates, capital, filters);
   if (filters) {
     const invalid = buyingLevels
@@ -195,15 +203,14 @@ function buildTechnicalLadderInternal(
     return emptyLadder('Reliable market data is insufficient to estimate the average entry price.');
   }
 
-  let targetCandidates = selectTargetCandidates(analysis, currentPrice, averageEntry, targetSpacing, mode);
-  if (filters)
-    targetCandidates = targetCandidates.map((candidate) => ({
-      ...candidate,
-      price: quantizePrice(candidate.price, filters.tickSize, 'sell'),
-    }));
-  if (targetCandidates.length !== MAX_TAKE_PROFIT_TARGETS) {
-    return emptyLadder('Reliable market data is insufficient to prepare four take-profit targets.');
-  }
+  const fee = new Decimal(ESTIMATED_FEE_PERCENT).div(100);
+  const breakEven = averageEntry.mul(new Decimal(1).plus(fee)).div(new Decimal(1).minus(fee));
+  let targetCandidates = classic && spacing
+    ? classicTargetCandidates(analysis, referencePrice, averageEntry, spacing.targetSpacing, classicMode, classicIndicatorZones)
+    : zoneCandidates('resistance').filter((candidate) => candidate.price.gt(breakEven));
+  if (classic && filters) targetCandidates = targetCandidates.map((candidate) => ({ ...candidate, price: quantizePrice(candidate.price, filters.tickSize, 'sell') }));
+  if (!targetCandidates.length || (classic && targetCandidates.length !== 4)) return emptyLadder(classic ? 'Reliable market data is insufficient to prepare four take-profit targets.' : `No ${timeframe} resistance zones are available above the current price and fee-adjusted entry.`);
+  const targetAllocations = classic ? [20, 30, 30, 20] : targetCandidates.map(() => 100 / targetCandidates.length);
 
   for (const level of buyingLevels) {
     const target = targetCandidates[0]?.price;
@@ -219,9 +226,9 @@ function buildTechnicalLadderInternal(
   );
   let remainingQuantity = totalQuantity;
   const targetQuantity = (index: number) => {
-    const quantity = index === MAX_TAKE_PROFIT_TARGETS - 1
+    const quantity = index === targetCandidates.length - 1
       ? remainingQuantity
-      : totalQuantity.mul(TAKE_PROFIT_ALLOCATION_PERCENTAGES[index]).div(100);
+      : totalQuantity.mul(targetAllocations[index]).div(100);
     const available = Decimal.min(quantity, remainingQuantity);
     const result = filters ? quantizeQuantity(available, filters.stepSize) : available;
     remainingQuantity = remainingQuantity.minus(result);
@@ -230,7 +237,7 @@ function buildTechnicalLadderInternal(
   const takeProfitTargets = targetCandidates.map((target, index) => {
     const quantity = targetQuantity(index);
     return {
-      allocationPercent: TAKE_PROFIT_ALLOCATION_PERCENTAGES[index],
+      allocationPercent: targetAllocations[index],
       classification: targetClassification(index),
       estimated: target.estimated,
       estimatedNetProfit: calculateNetProfit(quantity, averageEntry, target.price),
@@ -248,17 +255,12 @@ function buildTechnicalLadderInternal(
       .find(Boolean);
     if (invalid) return emptyLadder(`Take-profit plan unavailable: ${invalid}`);
   }
-  const usesEstimatedLevels = [...buyingLevels, ...takeProfitTargets].some(
-    (level) => level.estimated,
-  );
 
   const ladder = {
     averageEntry,
     buyingSummary: buildBuyingSummary(currentPrice, buyingLevels, averageEntry),
     buyingLevels,
-    confidence: usesEstimatedLevels
-      ? lowerConfidence(analysis.assessment.confidence)
-      : analysis.assessment.confidence,
+    confidence: classic ? ([...buyingLevels, ...takeProfitTargets].some((level) => level.estimated) ? (analysis.assessment.confidence === 'High' ? 'Medium' : 'Low') : analysis.assessment.confidence) : null,
     invalidationLevel: invalidation,
     reason: null,
     takeProfitSummary: buildTakeProfitSummary(
@@ -270,7 +272,7 @@ function buildTechnicalLadderInternal(
     takeProfitTargets,
   };
 
-  return validateTechnicalLadder(ladder, currentPrice, capital, spacing, targetSpacing * 0.5, filters != null);
+  return validateTechnicalLadder(ladder, currentPrice, capital, spacing?.spacing ?? 0, spacing ? spacing.targetSpacing * 0.5 : 0, filters != null);
 }
 
 export function validateLadderAgainstLivePrice(
@@ -298,186 +300,13 @@ export function validateLadderAgainstLivePrice(
   return { status: 'current', valid: true };
 }
 
-function selectBuyingCandidates(
-  analysis: MultiTimeframeAnalysis,
-  currentPrice: number,
-  spacing: number,
-  mode: LadderMode,
-): PriceCandidate[] {
-  const primary = analysis.timeframes['15m'];
-  const candidates: PriceCandidate[] = [];
-  for (const zone of primary.zones.filter(
-    (zone) => zone.kind === 'support' && zone.price > 0 && zone.price < currentPrice,
-  )) {
-    candidates.push(toSupportCandidate(zone, primary, spacing));
-  }
-  for (const [label, value] of Object.entries(primary.ema)) {
-    if (value !== null && value > 0 && value < currentPrice) {
-      candidates.push({
-        estimated: false,
-        price: new Decimal(value),
-        reasons: [`${formatEmaLabel(label)} confluence`],
-        score: 2,
-      });
-    }
-  }
-  for (const swingLow of primary.structure.swingLows) {
-    if (swingLow.price > 0 && swingLow.price < currentPrice) {
-      candidates.push({
-        estimated: false,
-        price: new Decimal(swingLow.price),
-        reasons: ['Previous 15M swing low', 'Intraday market-structure reference'],
-        score: 3,
-      });
-    }
-  }
-  addContextCandidates(candidates, analysis.timeframes['1h'], '1H', 'support', currentPrice);
-  addContextCandidates(candidates, analysis.timeframes['4h'], '4H', 'support', currentPrice);
-  const unit = new Decimal(spacing);
-  const zones = mergeCandidateZones(candidates, spacing * 0.1);
-  return BUY_LEVEL_MULTIPLIERS[mode].map((multiplier) => {
-    const projected = new Decimal(currentPrice).minus(unit.mul(multiplier));
-    const nearby = zones
-      .filter((candidate) => candidate.price.gt(0) && candidate.price.lt(currentPrice) && candidate.price.minus(projected).abs().lte(unit.mul('0.05')))
-      .sort((a, b) => a.price.minus(projected).abs().comparedTo(b.price.minus(projected).abs()));
-    return nearby[0] ?? {
-      estimated: true,
-      price: projected,
-      reasons: ['Estimated buying level based on mode and intraday volatility', 'No nearby support or moving average was available'],
-      score: 0,
-    };
-  }).filter((candidate) => candidate.price.gt(0));
-}
-
-function selectTargetCandidates(
-  analysis: MultiTimeframeAnalysis,
-  currentPrice: number,
-  averageEntry: Decimal,
-  spacing: number,
-  mode: LadderMode,
-): PriceCandidate[] {
-  const primary = analysis.timeframes['15m'];
-  const candidates: PriceCandidate[] = [];
-  const fee = new Decimal(ESTIMATED_FEE_PERCENT).div(100);
-  const feeAdjustedBreakEven = averageEntry
-    .mul(new Decimal(1).plus(fee))
-    .div(new Decimal(1).minus(fee));
-  const minimumTargetPrice = Decimal.max(currentPrice, feeAdjustedBreakEven);
-  for (const zone of primary.zones.filter(
-    (zone) => zone.kind === 'resistance' && new Decimal(zone.price).gt(minimumTargetPrice),
-  )) {
-    candidates.push({
-      estimated: false,
-      price: new Decimal(zone.price),
-      reasons: ['Confirmed 15M resistance', 'Previous swing-high supply area'],
-      score: zone.touches * 2,
-    });
-  }
-
-  addContextCandidates(
-    candidates,
-    analysis.timeframes['1h'],
-    '1H',
-    'resistance',
-    minimumTargetPrice,
-  );
-  addContextCandidates(
-    candidates,
-    analysis.timeframes['4h'],
-    '4H',
-    'resistance',
-    minimumTargetPrice,
-  );
-  const reference = minimumTargetPrice;
-  const unit = new Decimal(spacing);
-  const tolerance = mode === 'extended' ? 0.05 : 0.2;
-  const zones = mergeCandidateZones(candidates, spacing * (mode === 'extended' ? 0.1 : 0.2));
-  return Array.from({ length: MAX_TAKE_PROFIT_TARGETS }, (_, index) => {
-    const multiplier = mode === 'extended' ? EXTENDED_LEVEL_MULTIPLIERS[index] : index + 1;
-    const projected = reference.plus(unit.mul(multiplier));
-    const nearby = zones
-      .filter((candidate) => candidate.price.gt(minimumTargetPrice) && candidate.price.minus(projected).abs().lte(unit.mul(tolerance)))
-      .sort((a, b) => a.price.minus(projected).abs().comparedTo(b.price.minus(projected).abs()));
-    if (nearby[0]) return nearby[0];
-    return {
-      estimated: true,
-      price: projected,
-      reasons: [mode === 'extended' ? 'Estimated target based on mode and intraday volatility' : 'Estimated target based on bounded intraday volatility', 'No nearby resistance was available'],
-      score: 0,
-    };
-  });
-}
-
-function calculateTargetSpacing(currentPrice: number, buyingSpacing: number): number {
-  return Math.max(currentPrice * 0.003, Math.min(buyingSpacing * 0.5, currentPrice * 0.01));
-}
-
-function addContextCandidates(
-  candidates: PriceCandidate[],
-  timeframe: TimeframeAnalysis,
-  label: '1H' | '4H',
-  kind: PriceZone['kind'],
-  referencePrice: Decimal.Value,
-): void {
-  for (const zone of timeframe.zones.filter((zone) =>
-    kind === 'support'
-      ? new Decimal(zone.price).lt(referencePrice)
-      : new Decimal(zone.price).gt(referencePrice),
-  )) {
-    candidates.push({
-      estimated: false,
-      price: new Decimal(zone.price),
-      reasons: [`${label} ${kind} context`, `${label} swing structure`],
-      score: Math.max(1, zone.touches),
-    });
-  }
-}
-
-function mergeCandidateZones(
-  candidates: PriceCandidate[],
-  mergeDistance: number,
-): PriceCandidate[] {
-  const sorted = [...candidates].sort((left, right) => left.price.comparedTo(right.price));
-  const zones: PriceCandidate[] = [];
-
-  for (const candidate of sorted) {
-    const existing = zones.at(-1);
-    if (existing && existing.price.minus(candidate.price).abs().lte(mergeDistance)) {
-      const higherScoreCandidate = candidate.score > existing.score ? candidate : existing;
-      existing.price = higherScoreCandidate.price;
-      existing.score = Math.max(existing.score, candidate.score);
-      existing.estimated = existing.estimated && candidate.estimated;
-      existing.reasons = Array.from(new Set([...existing.reasons, ...candidate.reasons]));
-      continue;
-    }
-    zones.push({ ...candidate, reasons: [...candidate.reasons] });
-  }
-
-  return zones;
-}
-
-function calculateAdaptiveSpacing(
-  timeframe: TimeframeAnalysis,
-  currentPrice: number,
-  atr: number,
-): number {
-  const recentCandles = timeframe.candles.slice(-RECENT_RANGE_CANDLES);
-  const recentHigh = Math.max(...recentCandles.map((candle) => candle.high));
-  const recentLow = Math.min(...recentCandles.map((candle) => candle.low));
-  const recentRange = recentHigh - recentLow;
-  const rangeSpacing = Number.isFinite(recentRange) && recentRange > 0 ? recentRange * 0.12 : 0;
-  const priceFloor = currentPrice * 0.0005;
-
-  return Math.max(atr * 1.15, rangeSpacing, priceFloor);
-}
-
 function allocateBuyingLevels(
   candidates: PriceCandidate[],
   capital: Decimal.Value,
   filters?: SymbolFilters | null,
 ): DecimalBuyingLevel[] {
   const levels = candidates.map((candidate) => {
-    const budget = new Decimal(capital).div(MAX_BUYING_LEVELS)
+    const budget = new Decimal(capital).div(candidates.length)
       .div(new Decimal(1).plus(new Decimal(ESTIMATED_FEE_PERCENT).div(100)));
     const quantity = filters
       ? quantizeQuantity(budget.div(candidate.price), filters.stepSize)
@@ -485,7 +314,7 @@ function allocateBuyingLevels(
     const allocation = filters ? quantity.mul(candidate.price) : budget;
     return {
       allocation,
-      allocationPercent: 25,
+      allocationPercent: 100 / candidates.length,
       estimated: candidate.estimated,
       price: candidate.price,
       quantity,
@@ -503,53 +332,6 @@ function weightedAverageEntry(levels: DecimalBuyingLevel[]): Decimal | null {
   );
   const totalQuantity = levels.reduce((total, level) => total.plus(level.quantity), new Decimal(0));
   return totalAllocation.gt(0) && totalQuantity.gt(0) ? totalAllocation.div(totalQuantity) : null;
-}
-
-function deriveInvalidation(
-  assessedInvalidation: number | null,
-  deepestBuy: Decimal | null,
-  atr: number,
-): Decimal {
-  if (deepestBuy === null) {
-    return new Decimal(0);
-  }
-  if (
-    assessedInvalidation !== null &&
-    assessedInvalidation > 0 &&
-    new Decimal(assessedInvalidation).lt(deepestBuy)
-  ) {
-    return new Decimal(assessedInvalidation);
-  }
-  return Decimal.max(deepestBuy.minus(new Decimal(atr).mul('0.75')), deepestBuy.mul('0.01'));
-}
-
-function toSupportCandidate(
-  zone: PriceZone,
-  primary: TimeframeAnalysis,
-  spacing: number,
-): PriceCandidate {
-  const reasons = ['Confirmed 15M support', 'Previous swing-low cluster'];
-  let score = zone.touches * 2;
-  const confluenceDistance = spacing * 0.45;
-  if (
-    primary.ema.ema20 !== null &&
-    Math.abs(zone.price - primary.ema.ema20) <= confluenceDistance
-  ) {
-    reasons.push('EMA 20 confluence');
-    score += 2;
-  }
-  if (
-    primary.ema.ema50 !== null &&
-    Math.abs(zone.price - primary.ema.ema50) <= confluenceDistance
-  ) {
-    reasons.push('EMA 50 confluence');
-    score += 2;
-  }
-  if (primary.volumeConfirmed) {
-    reasons.push('Above-average 15M volume');
-    score += 1;
-  }
-  return { estimated: false, price: new Decimal(zone.price), reasons, score };
 }
 
 function targetClassification(index: number): TakeProfitTarget['classification'] {
@@ -573,14 +355,6 @@ function calculateRiskReward(
   const downside = entry.minus(invalidation);
   const upside = target.minus(entry);
   return downside.gt(0) && upside.gt(0) ? upside.div(downside) : null;
-}
-
-function formatEmaLabel(key: string): string {
-  return key.replace('ema', 'EMA ');
-}
-
-function lowerConfidence(confidence: 'High' | 'Low' | 'Medium'): 'High' | 'Low' | 'Medium' {
-  return confidence === 'High' ? 'Medium' : 'Low';
 }
 
 function emptyLadder(reason: string): TechnicalLadder {

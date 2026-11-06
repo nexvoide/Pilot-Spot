@@ -77,7 +77,28 @@ describe('MarketDataService', () => {
             maxNotional: '1000000',
         });
         expect(first.candles['4h']).toHaveLength(2);
-        expect(second.candlesCached).toEqual({ '15m': true, '1h': true, '4h': true });
+        expect(second.candlesCached).toEqual({ '15m': true, '1h': true, '4h': true, '1d': true });
+    });
+    it('pages older candles in chronological order and reuses cached history', async () => {
+        const upstream = createUpstream();
+        const original = upstream.getJson.getMockImplementation();
+        upstream.getJson.mockImplementation(async (path, _schema, query) => {
+            if (path !== '/api/v3/klines')
+                return original(path);
+            const end = query?.endTime ?? 2499;
+            const start = Math.max(0, end - (query?.limit ?? 0) + 1);
+            const data = Array.from({ length: end - start + 1 }, (_, index) => [start + index, '10', '11', '9', '10.5', '100', start + index]);
+            return { data, latencyMs: 10, provider: 'primary', retryCount: 0 };
+        });
+        const service = new MarketDataService(upstream);
+        const first = await service.getMarketSnapshot('BTCUSDT', 2000);
+        expect(first.candles['4h']).toHaveLength(2000);
+        expect(first.candles['4h'][0].openTime).toBe(500);
+        expect(first.candles['4h'][1999].openTime).toBe(2499);
+        const requests = upstream.getJson.mock.calls.filter(([path]) => path === '/api/v3/klines').length;
+        expect(requests).toBe(8);
+        await service.getMarketSnapshot('BTCUSDT', 2000);
+        expect(upstream.getJson.mock.calls.filter(([path]) => path === '/api/v3/klines')).toHaveLength(requests);
     });
     it('rejects invalid symbols before calling upstream', async () => {
         const upstream = createUpstream();

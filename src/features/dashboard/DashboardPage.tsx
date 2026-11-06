@@ -11,6 +11,7 @@ import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useCallback } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { analyzeMarket } from '@/lib/analysis/assessment';
+import { prepareZoneAnalysis } from '@/lib/analysis/zone-analysis';
 import { buildTechnicalLadder, validateLadderAgainstLivePrice } from '@/lib/calculations/ladders';
 import { analysisConfig } from '@/lib/analysis/config';
 import Decimal from '@/lib/calculations/financial-decimal';
@@ -28,7 +29,6 @@ import { useOnlineStatus } from '@/features/market-data/useOnlineStatus';
 import type { LiveTicker } from '@/lib/binance/websocket';
 import { defaultCoins } from '@/features/dashboard/default-coins';
 import { displayProfit, displayTargetProfits } from '@/features/dashboard/profit-display';
-import type { MultiTimeframeAnalysis } from '@/lib/analysis/types';
 import type { MarketTicker } from '@/lib/api/market-data';
 
 const pendingLevels = [1, 2, 3, 4];
@@ -58,7 +58,7 @@ export function DashboardPage() {
   const marketSnapshotQuery = useMarketSnapshot(submittedPair);
   const snapshotAsOf = marketSnapshotQuery.data?.asOf;
   const snapshotCurrentPrice = marketSnapshotQuery.data?.currentPrice;
-  const { globalCapital, ladderMode } = useCapitalSettings();
+  const { globalCapital, ladderMode, method, classicMode } = useCapitalSettings();
   const updateSelectedMarketPrice = useCallback(({ price }: { price: number }) => {
     setLivePrice(price);
   }, []);
@@ -137,8 +137,8 @@ export function DashboardPage() {
       return null;
     }
 
-    return analyzeMarket(marketSnapshotQuery.data.candles);
-  }, [marketSnapshotQuery.data, marketSnapshotQuery.dataUpdatedAt, online, reconnectedAt]);
+    return method === 'classic' ? analyzeMarket(marketSnapshotQuery.data.candles) : prepareZoneAnalysis(marketSnapshotQuery.data.candles);
+  }, [marketSnapshotQuery.data, marketSnapshotQuery.dataUpdatedAt, online, reconnectedAt, method]);
   const technicalLadder = useMemo(() => {
     if (!technicalAnalysis || capitalValue === null) {
       return null;
@@ -151,15 +151,19 @@ export function DashboardPage() {
       capitalValue,
       validatedCurrentPrice,
       marketSnapshotQuery.data?.filters ?? null,
-      ladderMode,
+      method === 'classic' ? classicMode : ladderMode,
+      marketSnapshotQuery.data?.candles['1d'],
     );
   }, [
     capitalValue,
     marketSnapshotQuery.data?.currentPrice,
     marketSnapshotQuery.data?.filters,
+    marketSnapshotQuery.data?.candles,
     technicalAnalysis,
     technicalReferencePrice,
     ladderMode,
+    classicMode,
+    method,
   ]);
   const liveLadderValidation = useMemo(
     () => validateLadderAgainstLivePrice(technicalLadder, livePrice),
@@ -181,15 +185,7 @@ export function DashboardPage() {
       return;
     }
 
-    const atr = technicalAnalysis.timeframes['15m'].atr;
-    if (atr === null || !Number.isFinite(atr) || atr <= 0) {
-      return;
-    }
-
-    const movementThreshold = Math.max(
-      atr * analysisConfig.ladderRecalculationAtrMultiplier,
-      technicalReferencePrice * 0.0005,
-    );
+    const movementThreshold = technicalReferencePrice * 0.0005;
     const hasMaterialMove = Math.abs(livePrice - technicalReferencePrice) >= movementThreshold;
     const shouldRecalculate = hasMaterialMove || !liveLadderValidation.valid;
 
@@ -228,12 +224,8 @@ export function DashboardPage() {
     : marketSnapshotQuery.isError || technicalLadder?.reason
       ? 'Data unavailable'
       : displayTechnicalLadder
-        ? `${displayTechnicalLadder.confidence} confidence`
+        ? method === 'classic' ? 'Classic plan' : 'Zones found'
         : ladderIsLoading ? 'Updating' : 'Waiting for live price';
-  const marketCondition = useMemo(
-    () => (technicalAnalysis ? describeMarketCondition(technicalAnalysis) : null),
-    [technicalAnalysis],
-  );
   const pairMatches = useMemo(() => {
     if (!normalizedPair || !eligiblePairsQuery.data) {
       return [];
@@ -500,7 +492,7 @@ export function DashboardPage() {
         <>
           <div className="analysis-toolbar">
             <Link to="/coins" className="analysis-back">← All markets</Link>
-            <Link to="/setup-capital" className="analysis-settings">{capitalValue === null ? 'Set capital & mode' : `Capital & mode · ${ladderMode[0].toUpperCase()}${ladderMode.slice(1)}`} <span aria-hidden="true">↗</span></Link>
+            <Link to="/setup-capital" className="analysis-settings">{capitalValue === null ? 'Set capital & timeframe' : `Capital & method · ${method === 'classic' ? classicMode : ladderMode}`} <span aria-hidden="true">↗</span></Link>
           </div>
           <section className="analysis-status" aria-live="polite" aria-labelledby="analysis-title">
             <div className="status-icon" aria-hidden="true">
@@ -528,7 +520,7 @@ export function DashboardPage() {
                       : marketSnapshotQuery.isError
                         ? formatMarketDataError(marketSnapshotQuery.error)
                         : technicalAnalysis && marketSnapshotQuery.data
-                          ? `${livePriceIsCurrent ? 'Latest price' : 'Last retrieved price'}: ${formatPrice(livePriceIsCurrent ? livePrice! : marketSnapshotQuery.data.currentPrice)} USDT. ${technicalAnalysis.assessment.reason}`
+                          ? `${livePriceIsCurrent ? 'Latest price' : 'Last retrieved price'}: ${formatPrice(livePriceIsCurrent ? livePrice! : marketSnapshotQuery.data.currentPrice)} USDT. ${method === 'classic' ? `Classic ${classicMode} indicator-based plan.` : `${ladderMode.toUpperCase()} support and resistance zones are used for this plan.`}`
                           : submittedPair
                             ? 'Live market data will appear here when available.'
                             : 'Market status and hypothetical planning levels are shown separately.'}
@@ -545,20 +537,12 @@ export function DashboardPage() {
                     )}
                 </p>
               )}
-              {technicalAnalysis && marketCondition && (
-                <p className="market-condition">
-                  <span className={`market-status-badge market-status-${marketCondition.tone}`}>
-                    {marketCondition.label}
-                  </span>
-                  <span>{marketCondition.explanation}</span>
-                </p>
-              )}
               {technicalAnalysis && marketSnapshotQuery.data && (
                 <p className="analysis-updated">
                   Last analysis update: {formatAnalysisTime(marketSnapshotQuery.data.asOf)} · Uses
-                  completed 15-minute candles. Last completed candle:{' '}
+                  completed {method === 'classic' ? '15m' : ladderMode} candles. Last completed candle:{' '}
                   {formatAnalysisTime(
-                    technicalAnalysis.timeframes['15m'].candles.at(-1)?.closeTime ??
+                    (method === 'classic' ? technicalAnalysis.timeframes['15m'].candles.at(-1) : ladderMode === '1d' ? marketSnapshotQuery.data.candles['1d']?.at(-2) : technicalAnalysis.timeframes[ladderMode].candles.at(-1))?.closeTime ??
                       marketSnapshotQuery.data.asOf,
                   )}
                   .
@@ -615,7 +599,7 @@ export function DashboardPage() {
                       : !livePriceIsCurrent
                         ? 'Waiting for a current live price to show your buying levels.'
                         : 'Revalidating your plan against the latest price…'
-                    : 'Four equal 25% hypothetical buying limits are prepared from support, structure, and volatility.')}
+                    : method === 'classic' ? 'Buying limits use volatility, technical levels, and active and broken indicator zones with the selected spacing.' : 'Overlapping active and broken support areas with centers within 1% are grouped. Each buy uses the lowest center in a group.')}
               </p>
               {capitalValue === null && <Link className="ladder-setup-link" to="/setup-capital">Set planning capital <span aria-hidden="true">→</span></Link>}
               {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Buying levels" aria-busy={ladderIsLoading}>
@@ -651,7 +635,7 @@ export function DashboardPage() {
                     <summary><span>View buying details</span><span aria-hidden="true">+</span></summary>
                     <dl className="overview-breakdown">
                       <div><dt>Validated current price</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.currentPrice)} USDT</dd></div>
-                      <div><dt>BL1–BL4 coverage</dt><dd>{formatPercent(displayTechnicalLadder.buyingSummary.coveragePercent)}</dd></div>
+                      <div><dt>Buying coverage</dt><dd>{formatPercent(displayTechnicalLadder.buyingSummary.coveragePercent)}</dd></div>
                       <div><dt>Distances from price</dt><dd>{displayTechnicalLadder.buyingSummary.distancesFromCurrentPercent.map((distance, index) => `BL${index + 1} ${formatPercent(distance)}`).join(' · ')}</dd></div>
                       <div><dt>Lowest buy</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.lowestLevel)} USDT</dd></div>
                       <div><dt>Weighted average before fees</dt><dd>{formatPrice(displayTechnicalLadder.buyingSummary.weightedAverageEntry)} USDT</dd></div>
@@ -681,7 +665,7 @@ export function DashboardPage() {
                       : !livePriceIsCurrent
                         ? 'Waiting for a current live price to show your take-profit targets.'
                         : 'Revalidating your plan against the latest price…'
-                    : 'Four hypothetical targets are prepared from resistance, risk/reward, and volatility.')}
+                    : method === 'classic' ? 'Targets use volatility, technical resistance, and active and broken indicator zones with the selected spacing.' : 'Overlapping active and broken resistance areas with centers within 1% are grouped. Each target uses the lowest center in a group.')}
               </p>
               {capitalValue === null && <Link className="ladder-setup-link" to="/setup-capital">Set planning capital <span aria-hidden="true">→</span></Link>}
               {(displayTechnicalLadder || ladderIsLoading) && <ol className="level-list" aria-label="Take-profit targets" aria-busy={ladderIsLoading}>
@@ -979,39 +963,6 @@ const coinMarks: Record<string, string> = {
   UNI: 'U',
   ZEC: 'Z',
 };
-
-function describeMarketCondition(analysis: MultiTimeframeAnalysis): {
-  explanation: string;
-  label: 'BEARISH' | 'BULLISH' | 'CAUTION' | 'NEUTRAL' | 'NOT AN IDEAL ENTRY';
-  tone: 'bearish' | 'bullish' | 'caution' | 'neutral' | 'not-ideal';
-} {
-  const primary = analysis.timeframes['15m'];
-  const lowerTimeframesConflict =
-    analysis.timeframes['1h'].trend !== primary.trend ||
-    analysis.timeframes['4h'].trend !== primary.trend;
-
-  if (primary.trend === 'bearish') {
-    return { explanation: 'Short-term momentum is weak.', label: 'BEARISH', tone: 'bearish' };
-  }
-  if (analysis.assessment.status === 'BUY SETUP DEVELOPING') {
-    return { explanation: 'Trend and momentum are positive.', label: 'BULLISH', tone: 'bullish' };
-  }
-  if (analysis.assessment.status === 'WAIT FOR BETTER ENTRY') {
-    return {
-      explanation: 'Price is currently extended or entry conditions are unfavourable.',
-      label: 'NOT AN IDEAL ENTRY',
-      tone: 'not-ideal',
-    };
-  }
-  if (lowerTimeframesConflict) {
-    return {
-      explanation: 'Volatility or conflicting signals increase risk.',
-      label: 'CAUTION',
-      tone: 'caution',
-    };
-  }
-  return { explanation: 'No clear directional advantage.', label: 'NEUTRAL', tone: 'neutral' };
-}
 
 function resolveDirectUsdtSymbol(query: string): string | null {
   const compactQuery = query.replace('/', '');

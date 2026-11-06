@@ -32,12 +32,14 @@ const snapshotResponseSchema = z.object({
     '15m': z.array(candleSchema),
     '1h': z.array(candleSchema),
     '4h': z.array(candleSchema),
+    '1d': z.array(candleSchema),
   }),
-  candlesCached: z.object({ '15m': z.boolean(), '1h': z.boolean(), '4h': z.boolean() }),
+  candlesCached: z.object({ '15m': z.boolean(), '1h': z.boolean(), '4h': z.boolean(), '1d': z.boolean() }),
   candlesFetchedAt: z.object({
     '15m': z.number().finite(),
     '1h': z.number().finite(),
     '4h': z.number().finite(),
+    '1d': z.number().finite(),
   }),
   currentPrice: z.number().positive().finite(),
   filters: z
@@ -80,8 +82,8 @@ export interface InternalApiError {
 export interface MarketSnapshotResponse extends MarketSnapshot {
   filters: SymbolFilters | null;
   asOf: number;
-  candlesCached: Record<'15m' | '1h' | '4h', boolean>;
-  candlesFetchedAt: Record<'15m' | '1h' | '4h', number>;
+  candlesCached: Record<'15m' | '1h' | '4h' | '1d', boolean>;
+  candlesFetchedAt: Record<'15m' | '1h' | '4h' | '1d', number>;
   provider: 'fallback' | 'primary';
 }
 
@@ -105,7 +107,7 @@ export async function fetchMarketSnapshot(
 ): Promise<MarketSnapshotResponse> {
   const response = await requestJson(
     '/api/market-snapshot',
-    { limit: options.limit ?? 200, symbol: symbol.trim().toUpperCase() },
+    { limit: options.limit ?? 4000, symbol: symbol.trim().toUpperCase() },
     options.signal,
   );
   const parsed = snapshotResponseSchema.safeParse(response);

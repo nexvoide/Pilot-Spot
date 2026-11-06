@@ -39,9 +39,9 @@ describe('internal market-data API client', () => {
       new Response(
         JSON.stringify({
           asOf: 4000,
-          candles: { '15m': [candle, candle], '1h': [candle, candle], '4h': [candle, candle] },
-          candlesCached: { '15m': false, '1h': false, '4h': false },
-          candlesFetchedAt: { '15m': 4000, '1h': 4000, '4h': 4000 },
+          candles: { '15m': [candle, candle], '1h': [candle, candle], '4h': [candle, candle], '1d': [candle, candle] },
+          candlesCached: { '15m': false, '1h': false, '4h': false, '1d': false },
+          candlesFetchedAt: { '15m': 4000, '1h': 4000, '4h': 4000, '1d': 4000 },
           currentPrice: 100.25,
           filters: null,
           provider: 'primary',

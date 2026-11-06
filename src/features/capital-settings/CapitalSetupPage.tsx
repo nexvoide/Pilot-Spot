@@ -21,7 +21,7 @@ function parseCapital(value: string): string | null {
 }
 
 export function CapitalSetupPage() {
-  const { globalCapital, setGlobalCapital, ladderMode, setLadderMode } = useCapitalSettings();
+  const { globalCapital, setGlobalCapital, ladderMode, setLadderMode, method, setMethod, classicMode, setClassicMode } = useCapitalSettings();
   const [value, setValue] = useState(() => (globalCapital ? formatCapital(globalCapital) : ''));
   const [error, setError] = useState<string | null>(null);
   const navigate = useNavigate();
@@ -56,8 +56,7 @@ export function CapitalSetupPage() {
         </p>
         <h1 id="capital-setup-title">Your trading plan, made simple.</h1>
         <p>
-          Set your spot capital and choose how closely the hypothetical buying and take-profit
-          levels are spaced.
+          Set your spot capital and choose how your buying and take-profit levels are calculated.
         </p>
       </div>
 
@@ -111,13 +110,45 @@ export function CapitalSetupPage() {
         </div>
 
         <fieldset className="ladder-modes capital-planning-modes">
-          <legend>Buying and take-profit mode</legend>
-          <p>Choose the spacing for both ladders. Your selection is saved in this browser.</p>
+          <legend>Planning method</legend>
           <div className="ladder-mode-options">
             {([
-              ['aggressive', 'Aggressive', 'Closer levels'],
-              ['balanced', 'Balanced', 'Moderate spacing'],
-              ['extended', 'Extended', 'Wider spacing'],
+              ['zones', 'Support & resistance', 'Active and broken zones'],
+              ['classic', 'Classic indicators', 'Volatility, technical indicators and support/resistance zones'],
+            ] as const).map(([value, label, description]) => (
+              <label className={`ladder-mode-option${method === value ? ' is-selected' : ''}`} key={value}>
+                <input type="radio" name="planning-method" value={value} checked={method === value} onChange={() => setMethod(value)} />
+                <span><strong>{label}</strong><small>{description}</small></span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        {method === 'classic' ? (
+          <fieldset className="ladder-modes capital-planning-modes">
+            <legend>Classic spacing</legend>
+            <div className="ladder-mode-options">
+              {([
+                ['aggressive', 'Aggressive', 'Closer levels'],
+                ['balanced', 'Balanced', 'Moderate spacing'],
+                ['extended', 'Extended', 'Wider spacing'],
+              ] as const).map(([value, label, description]) => (
+                <label className={`ladder-mode-option${classicMode === value ? ' is-selected' : ''}`} key={value}>
+                  <input type="radio" name="classic-mode" value={value} checked={classicMode === value} onChange={() => setClassicMode(value)} />
+                  <span><strong>{label}</strong><small>{description}</small></span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+        ) : (
+        <fieldset className="ladder-modes capital-planning-modes">
+          <legend>Zone timeframe</legend>
+          <p>Choose the candle timeframe used to find support and resistance zones.</p>
+          <div className="ladder-mode-options">
+            {([
+              ['15m', '15 minutes', '15-minute zones'],
+              ['4h', '4 hours', '4-hour zones'],
+              ['1d', '1 day', 'Daily zones'],
             ] as const).map(([mode, label, description]) => (
               <label className={`ladder-mode-option${ladderMode === mode ? ' is-selected' : ''}`} key={mode}>
                 <input type="radio" name="ladder-mode" value={mode} checked={ladderMode === mode} onChange={() => setLadderMode(mode)} />
@@ -125,8 +156,9 @@ export function CapitalSetupPage() {
               </label>
             ))}
           </div>
-          <small>All modes use the same market analysis. Levels and profits are not guaranteed.</small>
+          <small>Active and broken historical zones are included, using up to 4,000 recent candles. Zone calculations are adapted from LuxAlgo’s Support and Resistance Levels with Breaks and the supplied Clear Support &amp; Resistance script (<a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank" rel="noreferrer">CC BY-NC-SA 4.0</a>).</small>
         </fieldset>
+        )}
 
         <button className="terminal-primary-button capital-confirm-button" type="submit">
           Confirm &amp; continue to dashboard <span aria-hidden="true">→</span>

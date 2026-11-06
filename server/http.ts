@@ -95,11 +95,11 @@ async function route(url: URL): Promise<unknown> {
   if (url.pathname === '/api/klines') {
     const interval = url.searchParams.get('interval') ?? '';
     const limit = parseBoundedNumber(url.searchParams.get('limit'), 200, 2, 1_000);
-    return service.getKlines(readSymbol(url), interval as '15m' | '1h' | '4h', limit);
+    return service.getKlines(readSymbol(url), interval as '15m' | '1h' | '4h' | '1d', limit);
   }
 
   if (url.pathname === '/api/market-snapshot') {
-    const limit = parseBoundedNumber(url.searchParams.get('limit'), 200, 2, 1_000);
+    const limit = parseBoundedNumber(url.searchParams.get('limit'), 200, 2, 4_000);
     return service.getMarketSnapshot(readSymbol(url), limit);
   }
 

@@ -78,12 +78,15 @@ export class MarketDataService {
     }
     async getMarketSnapshot(symbol, limit) {
         const normalizedSymbol = validateSymbol(symbol);
-        validateLimit(limit);
+        validateLimit(limit, 4_000);
         const ticker = await this.getTickerPrice(normalizedSymbol);
-        const fifteenMinute = await this.getCachedCandles(normalizedSymbol, '15m', limit);
-        const oneHour = await this.getCachedCandles(normalizedSymbol, '1h', limit);
-        const fourHour = await this.getCachedCandles(normalizedSymbol, '4h', limit);
-        const metadata = await this.getEligiblePairs(normalizedSymbol, 100);
+        const [fifteenMinute, oneHour, fourHour, oneDay, metadata] = await Promise.all([
+            this.getCachedCandles(normalizedSymbol, '15m', limit),
+            this.getCachedCandles(normalizedSymbol, '1h', limit),
+            this.getCachedCandles(normalizedSymbol, '4h', limit),
+            this.getCachedCandles(normalizedSymbol, '1d', limit),
+            this.getEligiblePairs(normalizedSymbol, 100),
+        ]);
         const filters = metadata.pairs.find((pair) => pair.symbol === normalizedSymbol)?.filters ?? null;
         return {
             asOf: ticker.receivedAt,
@@ -91,16 +94,19 @@ export class MarketDataService {
                 '15m': fifteenMinute.value.candles,
                 '1h': oneHour.value.candles,
                 '4h': fourHour.value.candles,
+                '1d': oneDay.value.candles,
             },
             candlesCached: {
                 '15m': fifteenMinute.cached,
                 '1h': oneHour.cached,
                 '4h': fourHour.cached,
+                '1d': oneDay.cached,
             },
             candlesFetchedAt: {
                 '15m': fifteenMinute.fetchedAt,
                 '1h': oneHour.fetchedAt,
                 '4h': fourHour.fetchedAt,
+                '1d': oneDay.fetchedAt,
             },
             currentPrice: Number(ticker.price),
             filters,
@@ -111,16 +117,38 @@ export class MarketDataService {
     async getCachedCandles(symbol, interval, limit) {
         const key = `${symbol}:${interval}:${limit}`;
         return this.candleCache.getOrLoad(key, serverConfig.candleCacheTtlMs, async () => {
-            const response = await this.upstream.getJson('/api/v3/klines', klinesSchema, {
-                interval,
-                limit,
-                symbol,
-            });
-            const candles = response.data.map(toCandle);
+            const pages = [];
+            let remaining = limit;
+            let endTime;
+            let provider;
+            let upstreamLatencyMs = 0;
+            while (remaining > 0) {
+                const pageSize = Math.min(remaining, 1_000);
+                const response = await this.upstream.getJson('/api/v3/klines', klinesSchema, {
+                    interval, limit: pageSize, symbol, endTime,
+                });
+                const page = response.data.map(toCandle);
+                if (endTime !== undefined && page.some((candle) => candle.openTime > endTime)) {
+                    throw new ApiError('Upstream returned overlapping candle history.', 502, 'INVALID_CANDLE');
+                }
+                if (page.some((candle, index) => index > 0 && candle.openTime <= page[index - 1].openTime) && limit > 1_000) {
+                    throw new ApiError('Upstream returned unordered candle history.', 502, 'INVALID_CANDLE');
+                }
+                provider ??= response.provider;
+                upstreamLatencyMs += response.latencyMs;
+                pages.unshift(page);
+                remaining -= page.length;
+                if (page.length < pageSize || page.length === 0)
+                    break;
+                endTime = page[0].openTime - 1;
+                if (endTime < 0)
+                    break;
+            }
+            const candles = pages.flat();
             if (candles.length < 2) {
                 throw new ApiError('Upstream returned insufficient candle data.', 502, 'INCOMPLETE_CANDLES');
             }
-            return { candles, provider: response.provider, upstreamLatencyMs: response.latencyMs };
+            return { candles, provider: provider ?? 'primary', upstreamLatencyMs };
         });
     }
 }
@@ -170,12 +198,12 @@ function validateSymbol(value) {
     return symbol;
 }
 function validateInterval(value) {
-    if (value !== '15m' && value !== '1h' && value !== '4h') {
+    if (value !== '15m' && value !== '1h' && value !== '4h' && value !== '1d') {
         throw new ApiError('The requested candle interval is not supported.', 400, 'INVALID_INTERVAL');
     }
 }
-function validateLimit(value) {
-    if (!Number.isInteger(value) || value < 2 || value > 1_000) {
+function validateLimit(value, maximum = 1_000) {
+    if (!Number.isInteger(value) || value < 2 || value > maximum) {
         throw new ApiError('The requested candle limit is invalid.', 400, 'INVALID_LIMIT');
     }
 }

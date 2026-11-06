@@ -18,7 +18,7 @@ export interface MarketCandle {
 }
 
 export interface MarketSnapshot {
-  candles: Record<'15m' | '1h' | '4h', MarketCandle[]>;
+  candles: Record<'15m' | '1h' | '4h', MarketCandle[]> & { '1d'?: MarketCandle[] };
   currentPrice: number;
   symbol: string;
 }
