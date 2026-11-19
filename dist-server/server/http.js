@@ -6,6 +6,9 @@ import { isLocalRequest } from './local-access.js';
 import { getEconomySeries } from './economy-data.js';
 import { getFinnhubQuote } from './finnhub-data.js';
 import { getCryptoSizes, getCryptoGlobalSize, getCompanySize, getListedEquitySize } from './market-sizes.js';
+import { getWalletTrackingStatus } from './wallet-tracking.js';
+import { getWalletDetails, getWalletExtras } from './wallet-details.js';
+import { handleWalletManager } from './wallet-manager.js';
 const service = new MarketDataService();
 export async function handleApiRequest(request, response, options = {}) {
     const requestId = request.headers['x-request-id']?.toString() || randomUUID();
@@ -15,10 +18,11 @@ export async function handleApiRequest(request, response, options = {}) {
         try {
             if (!options.publicAccess && !isLocalRequest(request))
                 throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
-            if (request.method !== 'GET') {
+            const managerRoute = requestUrl.pathname.startsWith('/api/wallet-manager/');
+            if (!managerRoute && request.method !== 'GET') {
                 throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');
             }
-            const payload = await route(requestUrl);
+            const payload = managerRoute ? await handleWalletManager(request, response, requestUrl, options.publicAccess ?? false) : await route(requestUrl);
             sendJson(response, 200, payload, requestId);
             logRequest({
                 endpoint: requestUrl.pathname,
@@ -41,6 +45,12 @@ export async function handleApiRequest(request, response, options = {}) {
     });
 }
 async function route(url) {
+    if (url.pathname === '/api/wallet-tracking')
+        return getWalletTrackingStatus();
+    if (url.pathname === '/api/wallet-tracking/details')
+        return getWalletDetails(url.searchParams.get('address') ?? '');
+    if (url.pathname === '/api/wallet-tracking/details/extras')
+        return getWalletExtras(url.searchParams.get('address') ?? '');
     if (url.pathname === '/api/economy/equity-size')
         return getListedEquitySize(url.searchParams.get('region') ?? '');
     if (url.pathname === '/api/economy/crypto-sizes')
