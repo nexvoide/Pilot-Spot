@@ -31,7 +31,7 @@ export default defineConfig({
         icons: [
           {
             sizes: '192x192',
-            src: '/pwa-192.png',
+            src: '/spot-ladder-192.png',
             type: 'image/png',
           },
           {

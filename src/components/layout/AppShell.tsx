@@ -7,6 +7,7 @@ const navigationItems = [
   { label: 'Coins dashboard', shortLabel: 'Markets', to: '/coins' },
   { label: 'World Economy Flow', shortLabel: 'World', to: '/world-economy' },
   { label: 'Crypto news', shortLabel: 'News', to: '/news' },
+  { label: 'Wallet tracking', shortLabel: 'Whales', to: '/wallet-tracking' },
   { label: 'Extra tools', shortLabel: 'Tools', to: '/calculators/average-buy' },
 ] as const;
 

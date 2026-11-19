@@ -69,3 +69,20 @@ npm run format:check
 - The PWA caches the application shell; market data remains online-only and displays connection state.
 
 Strategy thresholds and calculation rules are documented in [STRATEGY.md](./STRATEGY.md).
+
+## Whale wallet tracking
+
+The wallet tracker monitors Hyperliquid perpetuals and sends Discord messages when a tracked wallet opens a position from flat or flips to the opposite direction. It does not send alerts for position increases or spot trades. Hyperliquid's public API is free. Checks run every five minutes even when Spot Ladder is closed; alerts are not instant. First fills can represent only part of an order. Provider outages can delay alerts, and exceptionally active wallets with 2,000 or more fills between successful checks may need manual attention. Delivery is best effort and rare duplicate alerts are possible after a storage failure.
+
+This feature runs separately from the existing Vercel deployment, using Cloudflare Workers and Workers KV. Cloudflare's free plan currently includes sufficient requests, scheduled triggers and KV writes for this tracker; account-wide limits still apply. No private keys, trading permissions or paid API are required. The service supports up to 10 wallet addresses.
+
+### One-time setup
+
+1. Create a free Cloudflare account and enable Workers & Pages. Create a Worker with a `workers.dev` address.
+2. Replace the Worker's code with the complete contents of [`wallet-worker/index.mjs`](./wallet-worker/index.mjs) and deploy it.
+3. In Workers & Pages, create a KV namespace. In the Worker's settings, add a KV namespace binding named `TRACKER` pointing to that namespace.
+4. In the Worker's settings, add a secret named `ADMIN_TOKEN` containing a unique random value of at least 32 characters. Keep it private; anyone with this token can change the tracker and its Discord destination. For example, generate one locally with `openssl rand -hex 32`.
+5. Add a Cron Trigger with the expression `*/5 * * * *`, then deploy the Worker again if prompted to apply its bindings and trigger.
+6. Open **Wallet tracking** in Spot Ladder. Enter the Worker's `https://…workers.dev` URL and the admin token and select **Connect**. Enter and save the Discord channel webhook, add wallet addresses, and select **Start tracking**. Settings are saved in the Worker; the Worker URL and admin token are stored in the browser used to configure it.
+
+The tracker checks fills after a wallet is added while tracking is enabled, or after tracking is started. It does not replay older positions. Use **Send test message** to check the Discord connection. Inspect the Worker logs for errors if alerts do not arrive. Cloudflare KV changes can take time to propagate. Stopping tracking pauses alerts; restarting begins from that time rather than replaying fills while paused. Rotate a compromised admin token in Cloudflare and reconnect the app. Rotate a compromised Discord webhook in Discord and save its replacement in the app.

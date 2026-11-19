@@ -6,6 +6,7 @@ import { CapitalSetupPage } from '@/features/capital-settings/CapitalSetupPage';
 import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { NotFoundPage } from '@/features/foundation/NotFoundPage';
 import { WorldEconomyPage } from '@/features/economy/WorldEconomyPage';
+import { WalletTrackingPage } from '@/features/wallet-tracking/WalletTrackingPage';
 import { CryptoNewsPage } from '@/features/news/CryptoNewsPage';
 
 export function AppRouter() {
@@ -17,6 +18,7 @@ export function AppRouter() {
           <Route path="setup-capital" element={<CapitalSetupPage />} />
           <Route path="coins" element={<DashboardPage />} />
           <Route path="world-economy" element={<WorldEconomyPage />} />
+          <Route path="wallet-tracking" element={<WalletTrackingPage />} />
           <Route path="news" element={<CryptoNewsPage />} />
           <Route path="analysis" element={<DashboardPage />} />
           <Route path="analysis/:symbol" element={<DashboardPage />} />

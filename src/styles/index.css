@@ -3156,22 +3156,18 @@ body { -webkit-tap-highlight-color: transparent; }
 
 .economy-page-title { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
 
-.install-dialog {
-  width: min(26rem, calc(100% - 2rem));
-  max-height: calc(100% - 2rem);
-  padding: 1.75rem;
-  border: 1px solid #40536b;
-  border-radius: 1rem;
-  background: #151d2b;
-  color: #edf3fc;
-  text-align: center;
-  box-shadow: 0 1rem 3rem #0009;
-}
-
-.install-dialog::backdrop { background: #030711c7; }
-.install-dialog-icon { width: 4rem; height: 4rem; margin: 0 auto 1rem; border-radius: 0.8rem; }
-.install-dialog h2 { margin: 0 0 0.75rem; font-size: 1.35rem; }
-.install-dialog p { margin: 0 0 1rem; color: #bdcadd; line-height: 1.5; }
-.install-dialog button { width: 100%; min-height: 2.75rem; border-radius: 0.6rem; font-weight: 700; cursor: pointer; }
-.install-dialog-primary { margin-bottom: 0.6rem; border: 0; background: #90dfbd; color: #10261d; }
-.install-dialog-dismiss { border: 1px solid #53667e; background: transparent; color: #edf3fc; }
+.wallet-page { display: grid; gap: 1rem; max-width: 48rem; }
+.wallet-page h1, .wallet-page p { margin: 0; }
+.wallet-note { padding: 1rem; border-radius: 0.75rem; background: #eef3ff; color: #33486e; font-size: 0.875rem; line-height: 1.5; }
+.wallet-card { display: grid; gap: 1rem; }
+.wallet-card h2 { margin: 0; font-size: 1.1rem; }
+.wallet-card h2 small { color: #69758c; font-size: 0.8rem; }
+.wallet-actions, .wallet-controls { display: flex; align-items: center; flex-wrap: wrap; gap: 0.75rem; }
+.wallet-secondary { padding: 0.65rem 0.9rem; border: 1px solid #cbd3e2; border-radius: 0.6rem; background: #fff; color: #34415b; font-weight: 700; cursor: pointer; }
+.wallet-secondary:disabled { opacity: 0.6; cursor: wait; }
+.wallet-add { display: grid; gap: 0.75rem; }
+.wallet-add button { justify-self: start; }
+.wallet-list { display: grid; gap: 0.5rem; margin: 0; padding: 0; list-style: none; }
+.wallet-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5eaf2; border-radius: 0.6rem; }
+.wallet-list code { overflow-wrap: anywhere; font-size: 0.8rem; }
+.wallet-controls strong { color: #40516c; font-size: 0.875rem; }
