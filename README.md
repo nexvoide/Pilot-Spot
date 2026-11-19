@@ -2,7 +2,7 @@
 
 ## Local use
 
-Spot Ladder runs locally without an account or session. The local production server and Vite development server bind to `127.0.0.1`; the local API rejects non-loopback clients, forwarded requests, non-local hostnames and cross-site requests. `HOST` cannot override the production bind address.
+Spot Ladder runs locally without an account. The local production server and Vite development server bind to `127.0.0.1`; the local API rejects non-loopback clients, forwarded requests, non-local hostnames and cross-site requests. `HOST` cannot override the production bind address.
 
 Use Node.js 22.13 or later and npm 10 or later:
 
@@ -24,10 +24,12 @@ Open the local URL printed by Vite. Both `npm run dev` and `npm start` load `.en
 | `VITE_BINANCE_WEBSOCKET_BASE_URL` | Public client-side Binance WebSocket URL. |
 | `FRED_API_KEY` | Server-side FRED API key for daily economy series. |
 | `FINNHUB_API_KEY` | Server-side Finnhub API key for stock and ETF quotes and company values. |
+| `WALLET_MANAGER_PIN` | Server-only wallet-manager PIN, 4–32 digits; a long, unique PIN is recommended. |
+| `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | Server-only Upstash Redis REST credentials for the shared wallet list. |
 
 ## Vercel deployment
 
-The Vercel API is public and read-only. Configure `FRED_API_KEY` and `FINNHUB_API_KEY` in the Vercel project environment for the deployment environment, then redeploy. Without these keys, the corresponding economy data is unavailable; Binance and public market-size data do not require them. Provider availability and geographic restrictions can still affect data.
+The Vercel API exposes public market data and PIN-protected wallet-management operations. Configure `FRED_API_KEY` and `FINNHUB_API_KEY` in the Vercel project environment for the deployment environment, then redeploy. Without these keys, the corresponding economy data is unavailable; Binance and public market-size data do not require them. Provider availability and geographic restrictions can still affect data.
 
 ## Market-data API architecture
 
@@ -72,13 +74,21 @@ Strategy thresholds and calculation rules are documented in [STRATEGY.md](./STRA
 
 ## Wallet tracking
 
-The dashboard uses the read-only wallet collection in [`src/features/wallet-tracking/wallets.ts`](./src/features/wallet-tracking/wallets.ts). It includes all 125 wallets from the updated 19 November 2026 spreadsheet and 11 previously supplied wallets absent from that sheet, for 136 unique addresses. Names follow the spreadsheet where addresses match; some spreadsheet names are assigned tracking aliases rather than verified identities. Capital snapshots from the sheet are dated 19 November 2026 at 09:57:04 UTC. Adding wallets requires editing this code and deploying the application; visitors cannot edit the collection.
+The dashboard initially uses the 12 wallets in [`src/features/wallet-tracking/wallets.ts`](./src/features/wallet-tracking/wallets.ts), including Abraxas Solo and Abraxas Duo. Once configured, **Manage wallets** requires a PIN before adding or deleting wallets. Changes are stored in shared Redis and become visible to other visitors, without editing code. The public tracking list refreshes about every 30 seconds; wallet positions refresh about every minute.
+
+To enable shared wallet management:
+
+1. Create or connect an Upstash Redis database in the [Vercel Marketplace](https://vercel.com/docs/redis), and add its `UPSTASH_REDIS_REST_URL` and `UPSTASH_REDIS_REST_TOKEN` to the Vercel project's server environment. Do not put either value in client-side variables or source code.
+2. Set `WALLET_MANAGER_PIN` to a private 4–32 digit PIN in the Vercel server environment. Use a longer, unique PIN and do not use an example that has been shared publicly.
+3. Redeploy the application for the environment variables to take effect. To use the same shared list locally, add the same three variables to the ignored `.env.local` file and restart the local server.
+
+The first shared-storage access initializes the list with the 12 wallets already in the code; later restarts and deployments do not overwrite changes. Use separate databases for environments that should not share a list. Without database configuration, the original read-only list remains available. If a configured database is unavailable, the tracker reports an error instead of replacing the shared list with the original wallets. Without a configured PIN, wallet changes are disabled. PIN attempts are limited, and sessions use an HTTP-only cookie and expire after 30 minutes.
 
 The dashboard retrieves main-market perpetual positions and margin from Hyperliquid's public API. Positions refresh about once a minute while the page is open. Order and P&L history loads when a card becomes visible and is cached for five minutes. Account margin values may not represent unified or spot balances, and other perpetual DEX markets are not included. The market summary counts wallets with open long and short positions. There are no Discord alerts or background position monitoring.
 
 
 
 
-Wallet categories use reported account-capital snapshots, not position value or a live balance: Minnow $100K–under $1M, Shark $1M–under $10M, Whale $10M–under $100M, and Leviathan $100M–$1B. A category is shown only when a historical capital snapshot was supplied; other wallets are unclassified until a capital value is available. Snapshot dates are displayed on cards and values can change.
+Wallet tiers use each wallet’s current total open position value on Hyperliquid’s main perpetuals market: Minnow $100K–under $1M, Shark $1M–under $10M, Whale $10M–under $100M, and Leviathan $100M–$1B inclusive. Values outside those ranges and unavailable position data are unclassified. Tiers and filters update with the wallet data; any separately shown capital snapshot remains historical and does not determine the tier.
 
-The collection has no fixed 100-wallet cap. To limit provider requests and keep the interface responsive as it grows, the dashboard displays at most 100 wallets per page. Totals, market counts, search, filters, and sorting describe the current page. Hyperliquid rate limits and outages may delay or prevent data from loading.
+The shared collection supports up to 10,000 wallets. To limit provider requests and keep the interface responsive as it grows, the dashboard displays at most 100 wallets per page. Totals, market counts, search, filters, and sorting describe the current page. Hyperliquid rate limits and outages may delay or prevent data from loading.

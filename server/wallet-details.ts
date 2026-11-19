@@ -151,7 +151,7 @@ function parsePortfolio(value: unknown): WalletDetails["portfolio"] {
 async function validateTrackedWallet(address: string): Promise<void> {
   if (!/^0x[0-9a-f]{40}$/.test(address))
     throw new ApiError("Invalid wallet address.", 400, "INVALID_WALLET");
-  if (!isTrackedWallet(address))
+  if (!(await isTrackedWallet(address)))
     throw new ApiError("Wallet not found.", 404, "WALLET_NOT_FOUND");
 }
 

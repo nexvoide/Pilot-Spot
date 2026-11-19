@@ -9,6 +9,7 @@ import { getFinnhubQuote } from './finnhub-data.js';
 import { getCryptoSizes, getCryptoGlobalSize, getCompanySize, getListedEquitySize } from './market-sizes.js';
 import { getWalletTrackingStatus } from './wallet-tracking.js';
 import { getWalletDetails, getWalletExtras } from './wallet-details.js';
+import { handleWalletManager } from './wallet-manager.js';
 
 const service = new MarketDataService();
 
@@ -24,11 +25,12 @@ export async function handleApiRequest(
   await requestContext.run({ endpoint: requestUrl.pathname, requestId }, async () => {
     try {
       if (!options.publicAccess && !isLocalRequest(request)) throw new ApiError('Local access only.', 403, 'LOCAL_ACCESS_ONLY');
-      if (request.method !== 'GET') {
+      const managerRoute = requestUrl.pathname.startsWith('/api/wallet-manager/');
+      if (!managerRoute && request.method !== 'GET') {
         throw new ApiError('Method not allowed.', 405, 'METHOD_NOT_ALLOWED');
       }
 
-      const payload = await route(requestUrl);
+      const payload = managerRoute ? await handleWalletManager(request, response, requestUrl, options.publicAccess ?? false) : await route(requestUrl);
       sendJson(response, 200, payload, requestId);
       logRequest({
         endpoint: requestUrl.pathname,

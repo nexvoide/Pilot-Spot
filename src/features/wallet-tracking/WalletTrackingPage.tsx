@@ -6,7 +6,9 @@ import {
 } from "@tanstack/react-query";
 import { getTrackerStatus, getWalletDetails, getWalletExtras } from "./tracker";
 import type { WalletDetails, WalletPosition } from "./types";
-import { capitalCategory, type CapitalSnapshot } from "./capital";
+import type { CapitalSnapshot } from "./capital";
+import { positionTier } from "./position-tier";
+import { WalletManager } from "./WalletManager";
 
 const REFRESH_MS = 60_000;
 const PAGE_SIZE = 100;
@@ -87,13 +89,46 @@ function Metric({
   );
 }
 
-function CapitalBadge({ snapshot }: { snapshot?: CapitalSnapshot }) {
-  const category = capitalCategory(snapshot?.valueUsd);
-  return category && snapshot ? (
+function PositionBadge({ value }: { value: number | null | undefined }) {
+  const category = positionTier(value);
+  return category && value != null ? (
     <span
       className={`whale-badge category-${category.toLowerCase()}`}
-      title={`Reported account value ${exactMoney(snapshot.valueUsd)} on ${new Date(snapshot.asOf).toLocaleDateString()}; not a live balance`}
+      title={`${category} · ${exactMoney(value)} in open main-market perpetual positions`}
     >
+      <svg
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+        className="whale-badge-icon"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        {category === "Leviathan" ? (
+          <>
+            <path d="M12 2 14 7l5-2-2 5 5 2-5 2 2 5-5-2-2 5-2-5-5 2 2-5-5-2 5-2-2-5 5 2z" />
+            <path d="m9 12 2 2 4-4" />
+          </>
+        ) : category === "Whale" ? (
+          <>
+            <path d="M3 12c3 0 4-2 5-4 1 2 2 4 5 4 2 0 4-1 5-3 0 3-2 7-6 7-3 0-5-1-6-3l-3 2z" />
+            <path d="M18 9c1-2 2-2 3-2m-3 2c0-2-1-3-2-4M4 19c2 1 4 1 6 0s4-1 6 0 3 1 4 0" />
+          </>
+        ) : category === "Shark" ? (
+          <>
+            <path d="M3 17c4-1 6-2 8-4l4-8c1 4 2 7 5 10l1 2z" />
+            <path d="M4 20c2 1 4 1 6 0s4-1 6 0 3 1 4 0" />
+          </>
+        ) : (
+          <>
+            <path d="M4 12c4-4 9-4 13 0-4 4-9 4-13 0z" />
+            <path d="m17 12 3-3v6z" />
+            <circle cx="8" cy="11" r=".5" fill="currentColor" stroke="none" />
+          </>
+        )}
+      </svg>
       {category}
     </span>
   ) : null;
@@ -101,13 +136,9 @@ function CapitalBadge({ snapshot }: { snapshot?: CapitalSnapshot }) {
 
 function WalletOverview({
   queries,
-  wallets,
-  capital,
   paginated,
 }: {
   queries: UseQueryResult<WalletDetails, Error>[];
-  wallets: string[];
-  capital: Record<string, CapitalSnapshot>;
   paginated: boolean;
 }) {
   const accounts = queries.flatMap((query) =>
@@ -134,8 +165,10 @@ function WalletOverview({
     (sum, account) => sum + account.positions.length,
     0,
   );
-  const categories = wallets.flatMap((address) => {
-    const category = capitalCategory(capital[address]?.valueUsd);
+  const categories = queries.flatMap((query) => {
+    const category = query.isError
+      ? null
+      : positionTier(query.data?.account?.positionValue);
     return category ? [category] : [];
   });
   const categoryCounts = ["Leviathan", "Whale", "Shark", "Minnow"].map(
@@ -176,10 +209,13 @@ function WalletOverview({
       </div>
       <div className="whale-overview-item">
         <span>Classified wallets</span>
-        <strong>{categories.length}</strong>
+        <strong>{noData ? "—" : categories.length}</strong>
         <small>
           {paginated ? "Current page · " : ""}
-          {categoryCounts.join(" · ")} · snapshots
+          {categoryCounts.join(" · ")}
+          {partial || exposureValues.length < accounts.length
+            ? " · partial"
+            : ""}
         </small>
       </div>
     </section>
@@ -452,7 +488,9 @@ function WalletCard({
           <div>
             <div className="whale-name-line">
               <h3>{name}</h3>
-              <CapitalBadge snapshot={capital} />
+              <PositionBadge
+                value={query.isError ? null : details?.account?.positionValue}
+              />
             </div>
             <code title={address}>{address}</code>
             {capital && (
@@ -638,7 +676,9 @@ function WalletListRow({
           <span className="whale-list-name">
             <span className="whale-name-line">
               <strong>{name}</strong>
-              <CapitalBadge snapshot={capital} />
+              <PositionBadge
+                value={query.isError ? null : account?.positionValue}
+              />
             </span>
             <code title={address}>{address}</code>
           </span>
@@ -682,6 +722,7 @@ function WalletListRow({
 }
 
 export function WalletTrackingPage() {
+  const [managerOpen, setManagerOpen] = useState(false);
   const [view, setView] = useState<"cards" | "list">("cards");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
@@ -705,7 +746,8 @@ export function WalletTrackingPage() {
   const status = useQuery({
     queryKey: ["wallet-tracking"],
     queryFn: ({ signal }) => getTrackerStatus(signal),
-    staleTime: Infinity,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -765,7 +807,8 @@ export function WalletTrackingPage() {
     if (filter === "loss") return pnl !== null && pnl < 0;
     if (["leviathan", "whale", "shark", "minnow"].includes(filter))
       return (
-        capitalCategory(capital[address]?.valueUsd)?.toLowerCase() === filter
+        !query.isError &&
+        positionTier(account?.positionValue)?.toLowerCase() === filter
       );
     if (filter === "leverage")
       return Boolean(
@@ -789,7 +832,22 @@ export function WalletTrackingPage() {
             the tracked wallets.
           </p>
         </div>
+        {status.data && (
+          <button
+            type="button"
+            className="wallet-manager-trigger"
+            onClick={() => setManagerOpen(true)}
+          >
+            Manage wallets
+          </button>
+        )}
       </div>
+      {managerOpen && status.data && (
+        <WalletManager
+          status={status.data}
+          onClose={() => setManagerOpen(false)}
+        />
+      )}
       {pageCount > 1 && (
         <div className="whale-pagination" aria-label="Wallet pages">
           <p>
@@ -824,9 +882,14 @@ export function WalletTrackingPage() {
       <div className="whale-info">
         Positions refresh about every minute while this page is open. Positions
         cover Hyperliquid’s main perpetuals market; margin value may not include
-        spot balances. Categories use reported capital snapshots, which may be
-        outdated. P&amp;L history is based on available portfolio snapshots.
+        spot balances. Tiers use each wallet’s total open position value.
+        P&amp;L history is based on available portfolio snapshots.
       </div>
+      {status.isRefetchError && status.data && (
+        <p className="field-help" role="status">
+          Wallet list could not refresh; showing the last available list.
+        </p>
+      )}
       {!status.data ? (
         <p className="field-help" role="status">
           {status.isError
@@ -835,12 +898,7 @@ export function WalletTrackingPage() {
         </p>
       ) : (
         <>
-          <WalletOverview
-            queries={details}
-            wallets={wallets}
-            capital={capital}
-            paginated={pageCount > 1}
-          />
+          <WalletOverview queries={details} paginated={pageCount > 1} />
           <div className="whale-list-heading">
             <div>
               <p className="eyebrow">WALLET WATCHLIST</p>
@@ -892,10 +950,6 @@ export function WalletTrackingPage() {
                   ["all", "All"],
                   ["profit", "In profit"],
                   ["loss", "In loss"],
-                  ["leviathan", "Leviathans"],
-                  ["whale", "Whales"],
-                  ["shark", "Sharks"],
-                  ["minnow", "Minnows"],
                   ["leverage", "High leverage (20×+)"],
                 ] as const
               ).map(([value, label]) => (
@@ -908,6 +962,33 @@ export function WalletTrackingPage() {
                   {label}
                 </button>
               ))}
+            </div>
+            <div
+              className="whale-capital-filters"
+              role="group"
+              aria-label="Filter by position tier"
+            >
+              <span>Position tier</span>
+              <div className="whale-filters">
+                {(
+                  [
+                    ["minnow", "Minnows"],
+                    ["shark", "Sharks"],
+                    ["whale", "Whales"],
+                    ["leviathan", "Leviathans"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    className={`whale-tier-button category-${value}`}
+                    aria-pressed={filter === value}
+                    onClick={() => setFilter(value)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
           {filteredWallets.length && view === "cards" ? (

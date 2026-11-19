@@ -9,7 +9,7 @@ import {
 } from "@testing-library/react";
 import { afterEach, expect, it, vi } from "vitest";
 import { WalletTrackingPage } from "./WalletTrackingPage";
-import { capitalCategory } from "./capital";
+import { positionTier } from "./position-tier";
 
 const address = `0x${"a".repeat(40)}`;
 const position = (coin: string, positionValue: number) => ({
@@ -40,6 +40,87 @@ const renderPage = () =>
 afterEach(() => {
   vi.unstubAllGlobals();
   localStorage.clear();
+});
+
+it("unlocks the manager with a PIN before adding and deleting wallets", async () => {
+  const added = `0x${"b".repeat(40)}`;
+  let wallets = [address];
+  let names: Record<string, string> = { [address]: "First" };
+  let unlocked = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/wallet-manager/status")
+        return Promise.resolve(
+          Response.json({ configured: true, authenticated: unlocked }),
+        );
+      if (url === "/api/wallet-manager/unlock") {
+        unlocked = true;
+        return Promise.resolve(Response.json({ authenticated: true }));
+      }
+      if (url === "/api/wallet-manager/lock") {
+        unlocked = false;
+        return Promise.resolve(Response.json({ authenticated: false }));
+      }
+      if (url === "/api/wallet-manager/wallets" && options?.method === "POST") {
+        wallets = [address, added];
+        names = { ...names, [added]: "Second" };
+        return Promise.resolve(Response.json({ wallets, walletNames: names }));
+      }
+      if (
+        url.startsWith("/api/wallet-manager/wallets?") &&
+        options?.method === "DELETE"
+      ) {
+        wallets = [address];
+        names = { [address]: "First" };
+        return Promise.resolve(Response.json({ wallets, walletNames: names }));
+      }
+      if (url.startsWith("/api/wallet-tracking/details"))
+        return Promise.resolve(
+          Response.json({
+            updatedAt: 100,
+            account: {
+              accountValue: 1,
+              marginUsed: 1,
+              positionValue: 1,
+              withdrawable: 0,
+              positions: [position("BTC", 1)],
+            },
+            portfolio: null,
+            orders: null,
+          }),
+        );
+      return Promise.resolve(Response.json({ wallets, walletNames: names }));
+    }),
+  );
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Manage wallets" }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Manage wallets" });
+  fireEvent.change(await within(dialog).findByLabelText("PIN"), {
+    target: { value: "73928364" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Unlock" }));
+  fireEvent.change(await within(dialog).findByLabelText("Wallet name"), {
+    target: { value: "Second" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Wallet address"), {
+    target: { value: added },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add wallet" }));
+  expect(await within(dialog).findByText("Second")).toBeVisible();
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Delete Second" }),
+  );
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Confirm delete" }),
+  );
+  await waitFor(() =>
+    expect(within(dialog).queryByText("Second")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Lock" }));
+  expect(await within(dialog).findByLabelText("PIN")).toBeVisible();
 });
 
 it("marks each card position by direction independently of its P&L", async () => {
@@ -74,8 +155,12 @@ it("marks each card position by direction independently of its P&L", async () =>
   await waitFor(() =>
     expect(card.querySelectorAll(".whale-position")).toHaveLength(2),
   );
-  const long = card.querySelector(".whale-direction.long")?.closest(".whale-position");
-  const short = card.querySelector(".whale-direction.short")?.closest(".whale-position");
+  const long = card
+    .querySelector(".whale-direction.long")
+    ?.closest(".whale-position");
+  const short = card
+    .querySelector(".whale-direction.short")
+    ?.closest(".whale-position");
   expect(long).toHaveTextContent("Long");
   expect(
     long?.querySelector(".whale-position-pnl .negative"),
@@ -556,8 +641,18 @@ it("sorts wallets by total position value and abbreviates large amounts", async 
   expect(
     within(overview).getAllByText("Partial · 2/3 wallets").length,
   ).toBeGreaterThan(0);
-  expect(screen.getAllByText("Whale")).toHaveLength(2);
-  fireEvent.click(screen.getByRole("button", { name: "Whales" }));
+  expect(screen.getAllByText("Leviathan")).toHaveLength(2);
+  const capitalFilters = screen.getByRole("group", {
+    name: "Filter by position tier",
+  });
+  expect(
+    within(capitalFilters)
+      .getAllByRole("button")
+      .map((button) => button.textContent),
+  ).toEqual(["Minnows", "Sharks", "Whales", "Leviathans"]);
+  fireEvent.click(
+    within(capitalFilters).getByRole("button", { name: "Leviathans" }),
+  );
   expect(screen.getAllByRole("article")).toHaveLength(2);
   fireEvent.change(
     screen.getByRole("searchbox", { name: "Search wallets or coins" }),
@@ -594,7 +689,7 @@ it("sorts wallets by total position value and abbreviates large amounts", async 
   expect(screen.getAllByRole("article")).toHaveLength(3);
 });
 
-it("labels wallets by capital snapshot rather than position value", async () => {
+it("labels and filters wallets by current position value, not capital snapshots", async () => {
   const other = `0x${"b".repeat(40)}`;
   vi.stubGlobal(
     "fetch",
@@ -618,7 +713,7 @@ it("labels wallets by capital snapshot rather than position value", async () => 
       const wallet = new URL(url, "http://localhost").searchParams.get(
         "address",
       );
-      const value = wallet === address ? 50_000_000 : 50_000_001;
+      const value = wallet === address ? 9_999_999 : 10_000_000;
       return Promise.resolve(
         Response.json({
           updatedAt: 100,
@@ -638,25 +733,106 @@ it("labels wallets by capital snapshot rather than position value", async () => 
   renderPage();
   const above = await screen.findByRole("heading", { name: "Above threshold" });
   await waitFor(() =>
-    expect(
-      within(above.closest("article")!).getByText("Leviathan"),
-    ).toBeVisible(),
+    expect(within(above.closest("article")!).getByText("Whale")).toBeVisible(),
   );
   const at = screen.getByRole("heading", { name: "At threshold" });
-  expect(within(at.closest("article")!).getByText("Whale")).toBeVisible();
+  expect(within(at.closest("article")!).getByText("Shark")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Whales" }));
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(
+    screen.getByRole("heading", { name: "Above threshold" }),
+  ).toBeVisible();
+});
+
+it("updates tiers and filters when open position value changes", async () => {
+  let value = 9_000_000;
+  let unavailable = false;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) => {
+      if (!url.startsWith("/api/wallet-tracking/details"))
+        return Promise.resolve(
+          Response.json({
+            wallets: [address],
+            walletNames: { [address]: "Moving wallet" },
+          }),
+        );
+      if (unavailable)
+        return Promise.resolve(new Response(null, { status: 503 }));
+      return Promise.resolve(
+        Response.json({
+          updatedAt: Date.now(),
+          account: {
+            accountValue: 1,
+            marginUsed: 1,
+            positionValue: value,
+            withdrawable: 0,
+            positions: [position("BTC", value)],
+          },
+          portfolio: null,
+          orders: null,
+        }),
+      );
+    }),
+  );
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, retryDelay: 0, gcTime: 0 } },
+  });
+  render(
+    <QueryClientProvider client={client}>
+      <WalletTrackingPage />
+    </QueryClientProvider>,
+  );
+  expect(await screen.findByText("Shark")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Sharks" }));
+  value = 100_000_000;
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ["wallet-details", address] });
+  });
+  await waitFor(() =>
+    expect(screen.queryByRole("article")).not.toBeInTheDocument(),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Leviathans" }));
+  expect(screen.getByText("Leviathan")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "List" }));
+  const row = screen
+    .getByRole("list", { name: "Wallet list" })
+    .querySelector("summary")!;
+  expect(within(row).getByText("Leviathan")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "Cards" }));
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
+  unavailable = true;
+  await act(async () => {
+    await client.invalidateQueries({ queryKey: ["wallet-details", address] });
+  });
+  await waitFor(() =>
+    expect(
+      within(screen.getByRole("article")).getByText(/refresh failed/),
+    ).toBeVisible(),
+  );
+  expect(
+    within(screen.getByRole("article")).queryByText("Leviathan"),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Leviathans" }));
+  expect(screen.queryByRole("article")).not.toBeInTheDocument();
 });
 
 it.each([
   [99_999, null],
   [100_000, "Minnow"],
+  [999_999, "Minnow"],
   [1_000_000, "Shark"],
+  [9_999_999, "Shark"],
   [10_000_000, "Whale"],
+  [99_999_999, "Whale"],
   [100_000_000, "Leviathan"],
   [1_000_000_000, "Leviathan"],
   [1_000_000_001, null],
   [null, null],
-])("classifies reported capital %s as %s", (value, expected) => {
-  expect(capitalCategory(value)).toBe(expected);
+  [NaN, null],
+  [Infinity, null],
+])("classifies open position value %s as %s", (value, expected) => {
+  expect(positionTier(value)).toBe(expected);
 });
 
 it("loads a large collection in pages and clearly scopes the overview", async () => {
