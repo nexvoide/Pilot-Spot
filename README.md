@@ -70,19 +70,15 @@ npm run format:check
 
 Strategy thresholds and calculation rules are documented in [STRATEGY.md](./STRATEGY.md).
 
-## Whale wallet tracking
+## Wallet tracking
 
-The wallet tracker monitors Hyperliquid perpetuals and sends Discord messages when a tracked wallet opens a position from flat or flips to the opposite direction. It does not send alerts for position increases or spot trades. Hyperliquid's public API is free. Checks run every five minutes even when Spot Ladder is closed; alerts are not instant. First fills can represent only part of an order. Provider outages can delay alerts, and exceptionally active wallets with 2,000 or more fills between successful checks may need manual attention. Delivery is best effort and rare duplicate alerts are possible after a storage failure.
+The dashboard uses the read-only wallet collection in [`src/features/wallet-tracking/wallets.ts`](./src/features/wallet-tracking/wallets.ts). It includes all 125 wallets from the updated 19 November 2026 spreadsheet and 11 previously supplied wallets absent from that sheet, for 136 unique addresses. Names follow the spreadsheet where addresses match; some spreadsheet names are assigned tracking aliases rather than verified identities. Capital snapshots from the sheet are dated 19 November 2026 at 09:57:04 UTC. Adding wallets requires editing this code and deploying the application; visitors cannot edit the collection.
 
-This feature runs separately from the existing Vercel deployment, using Cloudflare Workers and Workers KV. Cloudflare's free plan currently includes sufficient requests, scheduled triggers and KV writes for this tracker; account-wide limits still apply. No private keys, trading permissions or paid API are required. The service supports up to 10 wallet addresses.
+The dashboard retrieves main-market perpetual positions and margin from Hyperliquid's public API. Positions refresh about once a minute while the page is open. Order and P&L history loads when a card becomes visible and is cached for five minutes. Account margin values may not represent unified or spot balances, and other perpetual DEX markets are not included. The market summary counts wallets with open long and short positions. There are no Discord alerts or background position monitoring.
 
-### One-time setup
 
-1. Create a free Cloudflare account and enable Workers & Pages. Create a Worker with a `workers.dev` address.
-2. Replace the Worker's code with the complete contents of [`wallet-worker/index.mjs`](./wallet-worker/index.mjs) and deploy it.
-3. In Workers & Pages, create a KV namespace. In the Worker's settings, add a KV namespace binding named `TRACKER` pointing to that namespace.
-4. In the Worker's settings, add a secret named `ADMIN_TOKEN` containing a unique random value of at least 32 characters. Keep it private; anyone with this token can change the tracker and its Discord destination. For example, generate one locally with `openssl rand -hex 32`.
-5. Add a Cron Trigger with the expression `*/5 * * * *`, then deploy the Worker again if prompted to apply its bindings and trigger.
-6. Open **Wallet tracking** in Spot Ladder. Enter the Worker's `https://…workers.dev` URL and the admin token and select **Connect**. Enter and save the Discord channel webhook, add wallet addresses, and select **Start tracking**. Settings are saved in the Worker; the Worker URL and admin token are stored in the browser used to configure it.
 
-The tracker checks fills after a wallet is added while tracking is enabled, or after tracking is started. It does not replay older positions. Use **Send test message** to check the Discord connection. Inspect the Worker logs for errors if alerts do not arrive. Cloudflare KV changes can take time to propagate. Stopping tracking pauses alerts; restarting begins from that time rather than replaying fills while paused. Rotate a compromised admin token in Cloudflare and reconnect the app. Rotate a compromised Discord webhook in Discord and save its replacement in the app.
+
+Wallet categories use reported account-capital snapshots, not position value or a live balance: Minnow $100K–under $1M, Shark $1M–under $10M, Whale $10M–under $100M, and Leviathan $100M–$1B. A category is shown only when a historical capital snapshot was supplied; other wallets are unclassified until a capital value is available. Snapshot dates are displayed on cards and values can change.
+
+The collection has no fixed 100-wallet cap. To limit provider requests and keep the interface responsive as it grows, the dashboard displays at most 100 wallets per page. Totals, market counts, search, filters, and sorting describe the current page. Hyperliquid rate limits and outages may delay or prevent data from loading.

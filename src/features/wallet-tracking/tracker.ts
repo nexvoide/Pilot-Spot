@@ -1,62 +1,44 @@
-export const MAX_WALLETS = 10;
-export const addressPattern = /^0x[0-9a-f]{40}$/;
-
-export function isDiscordWebhook(value: string): boolean {
-  return /^https:\/\/discord\.com\/api\/webhooks\/\d+\/[A-Za-z0-9_-]+$/.test(
-    value,
-  );
-}
-
-export function isWorkerUrl(value: string): boolean {
-  try {
-    const url = new URL(value);
-    return (
-      url.protocol === "https:" &&
-      url.hostname.endsWith(".workers.dev") &&
-      !url.username &&
-      !url.password &&
-      !url.port &&
-      url.pathname === "/" &&
-      !url.search &&
-      !url.hash
-    );
-  } catch {
-    return false;
-  }
-}
-
-export interface TrackerSettings {
+export interface TrackerStatus {
   wallets: string[];
-  enabled: boolean;
-  webhookConfigured: boolean;
-  lastChecked?: number | null;
-  lastError?: string | null;
+  walletNames: Record<string, string>;
+  walletCapital?: Record<string, { valueUsd: number; asOf: string }>;
 }
 
-export async function trackerRequest(
-  url: string,
-  token: string,
-  settings?: { wallets: string[]; enabled: boolean; webhook?: string },
-): Promise<TrackerSettings> {
-  if (!isWorkerUrl(url) || token.length < 32)
-    throw new Error("Enter your Worker URL and admin token.");
-  const response = await fetch(url, {
-    method: settings ? "PUT" : "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      ...(settings ? { "Content-Type": "application/json" } : {}),
-    },
-    ...(settings ? { body: JSON.stringify(settings) } : {}),
-    signal: AbortSignal.timeout(15000),
-  });
+import type { WalletDetails, WalletExtras } from "./types";
+
+export async function getWalletDetails(
+  address: string,
+  signal: AbortSignal,
+): Promise<WalletDetails> {
+  const response = await fetch(
+    `/api/wallet-tracking/details?address=${encodeURIComponent(address)}`,
+    { signal },
+  );
+  if (!response.ok)
+    throw new Error("Wallet details are temporarily unavailable.");
+  return response.json() as Promise<WalletDetails>;
+}
+
+export async function getWalletExtras(
+  address: string,
+  signal: AbortSignal,
+): Promise<WalletExtras> {
+  const response = await fetch(
+    `/api/wallet-tracking/details/extras?address=${encodeURIComponent(address)}`,
+    { signal },
+  );
+  if (!response.ok)
+    throw new Error("Wallet history and orders are temporarily unavailable.");
+  return response.json() as Promise<WalletExtras>;
+}
+
+export async function getTrackerStatus(
+  signal: AbortSignal,
+): Promise<TrackerStatus> {
+  const response = await fetch("/api/wallet-tracking", { signal });
+  if (!response.ok)
+    throw new Error("Tracker status is temporarily unavailable.");
   const result: unknown = await response.json();
-  if (!response.ok) {
-    const error =
-      result && typeof result === "object" && "error" in result
-        ? String(result.error)
-        : `Request failed (${response.status}).`;
-    throw new Error(error);
-  }
   if (
     !result ||
     typeof result !== "object" ||
@@ -64,32 +46,39 @@ export async function trackerRequest(
     !Array.isArray(result.wallets) ||
     !result.wallets.every(
       (wallet: unknown) =>
-        typeof wallet === "string" && addressPattern.test(wallet),
+        typeof wallet === "string" && /^0x[0-9a-f]{40}$/.test(wallet),
     ) ||
-    !("enabled" in result) ||
-    typeof result.enabled !== "boolean" ||
-    !("webhookConfigured" in result) ||
-    typeof result.webhookConfigured !== "boolean"
+    !("walletNames" in result) ||
+    !result.walletNames ||
+    typeof result.walletNames !== "object" ||
+    Array.isArray(result.walletNames) ||
+    !Object.entries(result.walletNames).every(
+      ([address, name]) =>
+        (result.wallets as unknown[]).includes(address) &&
+        typeof name === "string" &&
+        name === name.trim() &&
+        name.length > 0 &&
+        name.length <= 100 &&
+        !/\p{Cc}/u.test(name),
+    ) ||
+    ("walletCapital" in result &&
+      (!result.walletCapital ||
+        typeof result.walletCapital !== "object" ||
+        Array.isArray(result.walletCapital) ||
+        !Object.entries(result.walletCapital).every(
+          ([address, value]) =>
+            (result.wallets as unknown[]).includes(address) &&
+            value !== null &&
+            typeof value === "object" &&
+            "valueUsd" in value &&
+            typeof value.valueUsd === "number" &&
+            Number.isFinite(value.valueUsd) &&
+            value.valueUsd >= 0 &&
+            "asOf" in value &&
+            typeof value.asOf === "string" &&
+            Number.isFinite(Date.parse(value.asOf)),
+        )))
   )
-    throw new Error("Unexpected tracker response.");
-  return result as TrackerSettings;
-}
-
-export async function testWebhook(url: string, token: string): Promise<void> {
-  if (!isWorkerUrl(url) || token.length < 32)
-    throw new Error("Enter your Worker URL and admin token.");
-  const endpoint = new URL("/test", url);
-  const response = await fetch(endpoint, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(20000),
-  });
-  if (!response.ok) {
-    const result: unknown = await response.json();
-    throw new Error(
-      result && typeof result === "object" && "error" in result
-        ? String(result.error)
-        : `Request failed (${response.status}).`,
-    );
-  }
+    throw new Error("Tracker status is temporarily unavailable.");
+  return result as TrackerStatus;
 }

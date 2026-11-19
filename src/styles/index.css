@@ -3171,3 +3171,160 @@ body { -webkit-tap-highlight-color: transparent; }
 .wallet-list li { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; padding: 0.75rem; border: 1px solid #e5eaf2; border-radius: 0.6rem; }
 .wallet-list code { overflow-wrap: anywhere; font-size: 0.8rem; }
 .wallet-controls strong { color: #40516c; font-size: 0.875rem; }
+
+.wallet-page { width: min(100%, 92rem); max-width: 92rem; gap: 1.1rem; padding: 1.25rem 0 3rem; }
+.whale-page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 1rem; }
+.whale-page-header .eyebrow, .whale-list-heading .eyebrow { color: #7da3ff; font-size: .7rem; letter-spacing: .16em; font-weight: 800; }
+.whale-page-header h1 { margin: .4rem 0 .45rem; font-size: clamp(1.8rem, 3vw, 2.5rem); }
+.whale-page-header .calculator-intro { max-width: 46rem; color: #a5b0c4; }
+.whale-pagination { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .75rem; padding: .7rem .85rem; border: 1px solid #344454; border-radius: .7rem; background: #101827; }
+.whale-pagination p, .whale-pagination span { color: #aabbd1; font-size: .75rem; }
+.whale-pagination > div { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem; }
+.whale-pagination button { padding: .4rem .65rem; border: 1px solid #405a80; border-radius: .45rem; background: #1e304a; color: #d7e7ff; font-size: .75rem; cursor: pointer; }
+.whale-pagination button:disabled { opacity: .5; cursor: default; }
+.whale-market-chart { padding: 1rem; border: 1px solid #2d3b51; border-radius: .8rem; background: #101827; }
+.whale-market-heading { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: .6rem; margin-bottom: .8rem; }
+.whale-market-heading h2 { margin: 0 0 .25rem; color: #edf3fd; font-size: .95rem; }
+.whale-market-heading p, .whale-market-heading > span { color: #a4b4c9; font-size: .7rem; }
+.whale-market-trigger { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; align-items: center; width: 100%; gap: 1rem; padding: .75rem; border: 1px solid #344761; border-radius: .7rem; background: #172238; color: #eff5ff; font: inherit; text-align: left; cursor: pointer; }
+.whale-market-trigger:hover { border-color: #6d9ddb; background: #1c2a42; }
+.whale-market-trigger:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 3px; }
+.whale-market-bitcoin { display: flex; align-items: center; min-width: 0; gap: .7rem; }
+.whale-market-bitcoin > span:last-child { display: grid; gap: .2rem; }
+.whale-market-bitcoin strong { color: #f2f6ff; font-size: 1rem; }
+.whale-market-bitcoin small { color: #9eafc5; font-size: .7rem; }
+.whale-btc-icon { display: grid; place-items: center; flex: 0 0 2.5rem; width: 2.5rem; height: 2.5rem; border-radius: .7rem; background: #624319; color: #ffd287; font-size: 1.3rem; font-weight: 800; }
+.whale-market-counts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .5rem; font-variant-numeric: tabular-nums; }
+.whale-count-box { display: flex; align-items: baseline; justify-content: center; gap: .4rem; padding: .55rem .65rem; border: 1px solid; border-radius: .5rem; white-space: nowrap; }
+.whale-count-box strong { font-size: 1.1rem; line-height: 1; }
+.whale-count-box > span { font-size: .72rem; font-weight: 700; }
+.whale-count-box.long { border-color: #286e5c; background: #123e34; color: #a0f0d0; }
+.whale-count-box.short { border-color: #823f4c; background: #48242e; color: #ffb3bd; }
+.whale-market-toggle { color: #b5cefa; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.whale-market-toggle > span { margin-left: .25rem; font-size: 1rem; }
+.whale-other-markets:not([hidden]) { margin-top: .7rem; }
+.whale-market-list { display: grid; gap: .5rem; max-height: 18rem; overflow-y: auto; margin: 0; padding: 0 .25rem 0 0; list-style: none; }
+.whale-market-list:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 3px; }
+.whale-market-row { display: grid; grid-template-columns: minmax(10rem, 1fr) minmax(12rem, 1fr) auto; align-items: center; gap: 1rem; padding: .5rem .75rem; border: 1px solid #2b3b53; border-radius: .6rem; background: #141e30; }
+.whale-market-row > .whale-market-counts { grid-column: 2; }
+.whale-market-coin { display: flex; align-items: baseline; min-width: 0; gap: .7rem; }
+.whale-market-coin strong { overflow: hidden; color: #edf3fd; font-size: .8rem; text-overflow: ellipsis; white-space: nowrap; }
+.whale-market-coin small { flex-shrink: 0; color: #9cabc1; font-size: .68rem; }
+.whale-market-row .whale-count-box { padding: .4rem .55rem; }
+.whale-market-row .whale-count-box strong { font-size: .85rem; }
+.whale-market-message { color: #9cabc1; font-size: .8rem; }
+@media (max-width: 700px) { .whale-market-trigger, .whale-market-row { grid-template-columns: minmax(0, 1fr) minmax(9rem, 1fr); gap: .7rem; } .whale-market-toggle { grid-column: 1 / -1; } }
+@media (max-width: 400px) { .whale-market-trigger, .whale-market-row { grid-template-columns: minmax(0, 1fr); } .whale-market-trigger > .whale-market-counts, .whale-market-row > .whale-market-counts, .whale-market-toggle { grid-column: 1; } }
+.whale-info { padding: .7rem .9rem; border: 1px solid #263d56; border-radius: .75rem; background: #152335; color: #a8c1df; font-size: .8rem; line-height: 1.5; }
+.whale-list-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 1rem; padding-top: .3rem; }
+.whale-list-heading h2 { margin: .4rem 0 0; color: #edf3fd; font-size: 1.35rem; }
+.whale-list-heading h2 span { color: #8191a9; font-size: .9rem; }
+.whale-list-heading > p { color: #8998ad; font-size: .75rem; }
+.whale-list-tools { display: flex; align-items: center; flex-wrap: wrap; justify-content: flex-end; gap: .8rem; }
+.whale-list-tools p { color: #8998ad; font-size: .75rem; }
+.whale-view-switch { display: inline-flex; padding: .2rem; border: 1px solid #344257; border-radius: .6rem; background: #101824; }
+.whale-view-switch button { padding: .42rem .7rem; border: 0; border-radius: .4rem; background: transparent; color: #a5b4c8; font-size: .75rem; font-weight: 700; cursor: pointer; }
+.whale-view-switch button[aria-pressed="true"] { background: #2a3c56; color: #f3f7ff; }
+.whale-view-switch button:focus-visible, .whale-list-row:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 2px; }
+.whale-compact-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
+.whale-list-item { min-width: 0; border: 1px solid #2d394e; border-radius: .75rem; background: #171f2c; }
+.whale-list-row { display: grid; grid-template-columns: minmax(9rem, 1.3fr) minmax(8rem, 1fr) minmax(6rem, .8fr) minmax(6rem, .8fr) auto; align-items: center; gap: .9rem; padding: .85rem 1rem; cursor: pointer; list-style: none; }
+.whale-list-row::-webkit-details-marker { display: none; }
+.whale-list-name, .whale-list-cell { display: grid; min-width: 0; gap: .3rem; }
+.whale-list-name strong, .whale-list-cell strong { color: #edf3fd; font-size: .8rem; overflow-wrap: anywhere; }
+.whale-list-name code { overflow: hidden; color: #8797af; font-size: .65rem; text-overflow: ellipsis; white-space: nowrap; }
+.whale-list-cell small { color: #92a1b6; font-size: .65rem; }
+.whale-list-cell .positive { color: #58dbaa; }
+.whale-list-cell .negative { color: #ff858e; }
+.whale-list-expand { color: #a6c3ff; font-size: .72rem; font-weight: 700; white-space: nowrap; }
+.whale-list-expand span { display: inline-block; margin-left: .2rem; }
+.whale-list-detail[open] .whale-list-expand span { transform: rotate(180deg); }
+.whale-list-expanded { padding: 0 1rem 1rem; }
+.whale-list-expanded .whale-card { border-color: #35475f; }
+.whale-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: .85rem; }
+.whale-card { display: flex; flex-direction: column; min-width: 0; padding: 1rem; border: 1px solid #2d394e; border-radius: .85rem; background: #171f2c; box-shadow: 0 10px 30px #060c171a; }
+.whale-card-header, .whale-identity, .whale-position-heading, .whale-position-heading > div, .whale-section-title { display: flex; align-items: center; gap: .7rem; }
+.whale-card-header, .whale-position-heading, .whale-section-title { justify-content: space-between; }
+.whale-identity { min-width: 0; }
+.whale-identity > div { min-width: 0; }
+.whale-avatar { display: grid; place-items: center; flex: 0 0 2.35rem; width: 2.35rem; height: 2.35rem; border: 1px solid #3f5d83; border-radius: .65rem; background: #233652; color: #a8c5ff; font-weight: 800; }
+.whale-identity h3 { margin: 0 0 .25rem; color: #f3f7ff; font-size: 1rem; }
+.whale-identity code { display: block; overflow: hidden; color: #8797af; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
+.whale-card-count { flex-shrink: 0; padding: .3rem .55rem; border: 1px solid #3a4b61; border-radius: 999px; color: #b7c7dc; font-size: .68rem; font-weight: 700; }
+.whale-summary-grid, .whale-position-grid { display: grid; margin: 0; gap: .65rem .75rem; }
+.whale-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .85rem 0; padding: .8rem; border-radius: .7rem; background: #101824; }
+.whale-metric { min-width: 0; }
+.whale-metric dt { color: #92a1b6; font-size: .66rem; line-height: 1.35; }
+.whale-metric dd { margin: .3rem 0 0; color: #e6eefb; font-size: .83rem; font-weight: 700; overflow-wrap: anywhere; }
+.whale-card .positive { color: #58dbaa; }
+.whale-card .negative { color: #ff858e; }
+.whale-section-title { margin: .8rem 0 .55rem; }
+.whale-section-title h4 { margin: 0; color: #e0e9f6; font-size: .8rem; }
+.whale-section-title span, .whale-updated { color: #8493a9; font-size: .67rem; }
+.whale-positions { display: grid; gap: .6rem; margin-bottom: .7rem; }
+.whale-positions .whale-positions { margin-bottom: 0; }
+.whale-position { padding: .7rem; border: 1px solid #344257; border-radius: .7rem; background: #1b2635; }
+.whale-position-heading { color: #f0f5fd; font-size: .9rem; }
+.whale-direction { padding: .2rem .4rem; border-radius: .3rem; font-size: .62rem; text-transform: uppercase; letter-spacing: .04em; }
+.whale-direction.long { background: #173f38; color: #6ce4b7; }
+.whale-direction.short { background: #4b2930; color: #ffa1a5; }
+.whale-position-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-top: .65rem; }
+.whale-position-grid .whale-metric dd { font-size: .74rem; }
+.whale-card-message { padding: .75rem 0; color: #9baac0; font-size: .8rem; line-height: 1.5; }
+.whale-load-extras { align-self: flex-start; padding: .4rem .65rem; border: 1px solid #405a80; border-radius: .45rem; background: #1e304a; color: #d7e7ff; font-size: .75rem; cursor: pointer; }
+.whale-more-positions summary { padding: .45rem .1rem; color: #a6c3ff; font-size: .75rem; font-weight: 700; cursor: pointer; }
+.whale-more-positions[open] > .whale-positions { padding-top: .35rem; }
+.whale-orders { margin-top: auto; padding-top: .7rem; border-top: 1px solid #334054; color: #a9bbd1; font-size: .75rem; }
+.whale-orders summary { cursor: pointer; font-weight: 700; }
+.whale-orders p { padding: .7rem 0; color: #95a3b5; }
+.whale-orders ul { display: grid; gap: .55rem; max-height: 15rem; overflow: auto; margin: .8rem 0 0; padding: 0; list-style: none; }
+.whale-orders li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: .4rem; color: #c5d0e1; }
+.whale-updated { margin-top: .7rem !important; }
+@media (min-width: 851px) and (max-width: 1100px) { .whale-position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 850px) { .whale-grid { grid-template-columns: 1fr; } }
+@media (max-width: 700px) { .whale-list-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .8rem; } .whale-list-expand { grid-column: 1 / -1; } }
+@media (max-width: 600px) { .whale-page-header, .whale-list-heading { align-items: flex-start; flex-direction: column; } .whale-list-tools { justify-content: flex-start; } .whale-position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .whale-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .whale-card { padding: 1rem; } }
+
+.whale-overview { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
+.whale-overview-item { display: grid; gap: .45rem; min-width: 0; padding: 1rem; border: 1px solid #26334a; border-radius: .75rem; background: #101827; }
+.whale-overview-item > span { color: #9eacc3; font-size: .68rem; font-weight: 700; letter-spacing: .045em; text-transform: uppercase; }
+.whale-overview-item > strong { color: #edf4ff; font-size: clamp(1.15rem, 1.6vw, 1.5rem); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.whale-overview-item > small { color: #96a7be; font-size: .7rem; }
+.whale-overview-item > strong.positive { color: #58dbaa; }
+.whale-overview-item > strong.negative { color: #ff858e; }
+.whale-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: .8rem; padding: .8rem; border: 1px solid #26334a; border-radius: .75rem; background: #101827; }
+.whale-search { flex: 1 1 15rem; max-width: 22rem; position: relative; }
+.whale-search .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.whale-search input { width: 100%; min-height: 2.35rem; padding: .55rem .75rem; border: 1px solid #384c69; border-radius: .5rem; background: #172338; color: #f1f5fb; font: inherit; font-size: .8rem; }
+.whale-search input::placeholder { color: #9aaac1; }
+.whale-search input:focus-visible, .whale-filters button:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 2px; }
+.whale-filters { display: flex; flex-wrap: wrap; gap: .35rem; }
+.whale-filters button { padding: .42rem .7rem; border: 1px solid #35445d; border-radius: 999px; background: #19253a; color: #bdcce0; font: inherit; font-size: .72rem; cursor: pointer; }
+.whale-filters button[aria-pressed="true"] { border-color: #5d9cff; background: #1f426d; color: #e6f1ff; }
+.whale-name-line { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; }
+.whale-name-line h3 { margin: 0; }
+.whale-identity .whale-name-line { margin-bottom: .25rem; }
+.whale-badge { display: inline-flex; align-items: center; padding: .18rem .5rem; border: 1px solid #207c69; border-radius: 999px; background: #124338; color: #93f0cf; font-size: .66rem; font-weight: 800; letter-spacing: .01em; }
+.whale-badge.category-leviathan { border-color: #7959a5; background: #382651; color: #e0c4ff; }
+.whale-badge.category-shark { border-color: #447ba3; background: #1b405d; color: #b7e2ff; }
+.whale-badge.category-minnow { border-color: #7b7351; background: #453d28; color: #f2dea5; }
+.whale-capital-snapshot { display: block; margin-top: .25rem; color: #a6b7cb; font-size: .66rem; }
+.whale-card { background: #101827; border-color: #26334a; }
+.whale-summary-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); gap: .8rem .65rem; background: #182238; }
+.whale-summary-grid .whale-metric { grid-column: span 3; }
+.whale-summary-grid .whale-metric-primary { grid-column: span 6; padding-bottom: .75rem; border-bottom: 1px solid #30405a; }
+.whale-summary-grid .whale-metric-primary dd { font-size: 1.15rem; font-variant-numeric: tabular-nums; }
+.whale-position { background: #182238; border-color: #2a3952; }
+.whale-position-heading > div:first-child { min-width: 0; flex-wrap: wrap; gap: .4rem; }
+.whale-position-heading > .whale-position-pnl { display: grid; gap: .2rem; text-align: right; }
+.whale-position-pnl small { font-size: .68rem; }
+.whale-leverage { padding: .2rem .4rem; border: 1px solid #3e506b; border-radius: .3rem; background: #25334b; color: #d6e2f3; font-size: .65rem; }
+.whale-position-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 900px) { .whale-overview { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 600px) { .whale-search { max-width: none; } .whale-summary-grid .whale-metric:not(.whale-metric-primary) { grid-column: span 6; } .whale-position-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Highlight long and short counts in the market summary. */
+.whale-count-box.long { border-color: #40c8a9; background: repeating-linear-gradient(115deg, #ffffff0c 0 2px, transparent 2px 4rem), linear-gradient(100deg, #126d5d, #148e79); color: #fff; }
+.whale-count-box.short { border-color: #f36b7c; background: repeating-linear-gradient(115deg, #ffffff0c 0 2px, transparent 2px 4rem), linear-gradient(100deg, #a51c32, #d12340); color: #fff; }
+.whale-count-box strong { color: #f1ff9a; }
+

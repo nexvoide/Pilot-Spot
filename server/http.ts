@@ -7,6 +7,8 @@ import { isLocalRequest } from './local-access.js';
 import { getEconomySeries } from './economy-data.js';
 import { getFinnhubQuote } from './finnhub-data.js';
 import { getCryptoSizes, getCryptoGlobalSize, getCompanySize, getListedEquitySize } from './market-sizes.js';
+import { getWalletTrackingStatus } from './wallet-tracking.js';
+import { getWalletDetails, getWalletExtras } from './wallet-details.js';
 
 const service = new MarketDataService();
 
@@ -55,6 +57,9 @@ export async function handleApiRequest(
 }
 
 async function route(url: URL): Promise<unknown> {
+  if (url.pathname === '/api/wallet-tracking') return getWalletTrackingStatus();
+  if (url.pathname === '/api/wallet-tracking/details') return getWalletDetails(url.searchParams.get('address') ?? '');
+  if (url.pathname === '/api/wallet-tracking/details/extras') return getWalletExtras(url.searchParams.get('address') ?? '');
   if (url.pathname === '/api/economy/equity-size') return getListedEquitySize(url.searchParams.get('region') ?? '');
   if (url.pathname === '/api/economy/crypto-sizes') return getCryptoSizes();
   if (url.pathname === '/api/economy/crypto-global-size') return getCryptoGlobalSize();
