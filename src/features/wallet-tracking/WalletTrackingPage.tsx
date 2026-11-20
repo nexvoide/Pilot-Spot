@@ -7,7 +7,7 @@ import {
 import { getTrackerStatus, getWalletDetails, getWalletExtras } from "./tracker";
 import type { WalletDetails, WalletPosition } from "./types";
 import type { CapitalSnapshot } from "./capital";
-import { positionTier } from "./position-tier";
+import { positionTier, type PositionTier } from "./position-tier";
 import { WalletManager } from "./WalletManager";
 
 const REFRESH_MS = 60_000;
@@ -225,17 +225,32 @@ function WalletOverview({
 function MarketPositionsChart({
   queries,
   paginated,
+  tier,
 }: {
   queries: UseQueryResult<WalletDetails, Error>[];
   paginated: boolean;
+  tier: PositionTier | null;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const accounts = queries.flatMap((query) =>
+  const checkedAccounts = queries.flatMap((query) =>
     query.data?.account ? [query.data.account] : [],
   );
+  const availableAccounts = queries.filter(
+    (query) => !query.isError && query.data?.account,
+  );
+  const accounts = tier
+    ? availableAccounts.flatMap((query) => {
+        const account = query.data?.account;
+        return account && positionTier(account.positionValue) === tier
+          ? [account]
+          : [];
+      })
+    : checkedAccounts;
   const stale = queries.some((query) => query.isError && query.data?.account);
-  const unavailable = accounts.length !== queries.length || stale;
-  const noData = queries.length > 0 && accounts.length === 0;
+  const unavailable = checkedAccounts.length !== queries.length || stale;
+  const noData =
+    queries.length > 0 &&
+    (tier ? availableAccounts.length === 0 : checkedAccounts.length === 0);
   const counts = new Map<
     string,
     { coin: string; longs: number; shorts: number }
@@ -272,12 +287,15 @@ function MarketPositionsChart({
           <p>
             Number of tracked wallets · main perpetuals
             {paginated ? " · current page" : ""}
+            {tier ? ` · ${tier}s` : ""}
           </p>
         </div>
         <span>
+          {tier &&
+            `${accounts.length} ${tier.toLowerCase()} ${accounts.length === 1 ? "wallet" : "wallets"} · `}
           {unavailable
-            ? `${accounts.length}/${queries.length} wallets checked${stale ? " · refresh failed" : ""}`
-            : `${accounts.length} wallets checked`}
+            ? `${tier ? availableAccounts.length : checkedAccounts.length}/${queries.length} wallets checked${stale ? " · refresh failed" : ""}`
+            : `${checkedAccounts.length} wallets checked`}
         </span>
       </div>
       <button
@@ -788,6 +806,16 @@ export function WalletTrackingPage() {
   const activeCount = sortedWallets.filter(
     ({ query }) => (query.data?.account?.positions.length ?? 0) > 0,
   ).length;
+  const selectedTier: PositionTier | null =
+    filter === "minnow"
+      ? "Minnow"
+      : filter === "shark"
+        ? "Shark"
+        : filter === "whale"
+          ? "Whale"
+          : filter === "leviathan"
+            ? "Leviathan"
+            : null;
   const searchTerm = search.trim().toLowerCase();
   const filteredWallets = sortedWallets.filter(({ address, query }) => {
     const account = query.data?.account;
@@ -805,10 +833,9 @@ export function WalletTrackingPage() {
     const pnl = openPnl(account?.positions);
     if (filter === "profit") return pnl !== null && pnl > 0;
     if (filter === "loss") return pnl !== null && pnl < 0;
-    if (["leviathan", "whale", "shark", "minnow"].includes(filter))
+    if (selectedTier)
       return (
-        !query.isError &&
-        positionTier(account?.positionValue)?.toLowerCase() === filter
+        !query.isError && positionTier(account?.positionValue) === selectedTier
       );
     if (filter === "leverage")
       return Boolean(
@@ -877,7 +904,11 @@ export function WalletTrackingPage() {
         </div>
       )}
       {status.data && (
-        <MarketPositionsChart queries={details} paginated={pageCount > 1} />
+        <MarketPositionsChart
+          queries={details}
+          paginated={pageCount > 1}
+          tier={selectedTier}
+        />
       )}
       <div className="whale-info">
         Positions refresh about every minute while this page is open. Positions

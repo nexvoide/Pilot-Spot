@@ -490,6 +490,98 @@ it("ranks markets by wallet counts and updates when a position closes", async ()
   expect(within(counts).queryByRole("list")).not.toBeInTheDocument();
 });
 
+it("filters BTC and other market counts by the selected wallet position tier", async () => {
+  const wallets = ["a", "b", "c", "d"].map(
+    (letter) => `0x${letter.repeat(40)}`,
+  );
+  const values = [20_000_000, 2_000_000, 200_000, 120_000_000];
+  const positions = [
+    [position("BTC", 15_000_000), { ...position("ETH", 5_000_000), size: -1 }],
+    [{ ...position("BTC", 1_500_000), size: -1 }, position("ETH", 500_000)],
+    [position("ZEC", 200_000)],
+    [position("ETH", 120_000_000)],
+  ];
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) => {
+      if (!url.startsWith("/api/wallet-tracking/details"))
+        return Promise.resolve(
+          Response.json({
+            wallets,
+            walletNames: Object.fromEntries(
+              wallets.map((wallet, index) => [wallet, `Trader ${index}`]),
+            ),
+          }),
+        );
+      const wallet = new URL(url, "http://localhost").searchParams.get(
+        "address",
+      );
+      const index = wallets.indexOf(wallet ?? "");
+      return Promise.resolve(
+        Response.json({
+          updatedAt: 100,
+          account: {
+            accountValue: 1,
+            marginUsed: 1,
+            positionValue: values[index],
+            withdrawable: 0,
+            positions: positions[index],
+          },
+          portfolio: null,
+          orders: null,
+        }),
+      );
+    }),
+  );
+  renderPage();
+  const chart = await screen.findByRole("region", {
+    name: "Market positions across tracked wallets",
+  });
+  const count = (direction: "long" | "short") =>
+    chart.querySelector(
+      `.whale-market-trigger .whale-count-box.${direction} strong`,
+    );
+  await waitFor(() =>
+    expect(within(chart).getByText("4 wallets checked")).toBeVisible(),
+  );
+  expect(count("long")).toHaveTextContent("1");
+  expect(count("short")).toHaveTextContent("1");
+  fireEvent.click(
+    within(chart).getByRole("button", { name: /show other markets/i }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Whales" }));
+  expect(count("long")).toHaveTextContent("1");
+  expect(count("short")).toHaveTextContent("0");
+  expect(
+    within(chart).getByText(/1 whale wallet · 4 wallets checked/),
+  ).toBeVisible();
+  let eth = within(chart).getByText("ETH").closest("li")!;
+  expect(eth.querySelector(".whale-count-box.short strong")).toHaveTextContent(
+    "1",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Sharks" }));
+  expect(count("long")).toHaveTextContent("0");
+  expect(count("short")).toHaveTextContent("1");
+  eth = within(chart).getByText("ETH").closest("li")!;
+  expect(eth.querySelector(".whale-count-box.long strong")).toHaveTextContent(
+    "1",
+  );
+  expect(eth.querySelector(".whale-count-box.short strong")).toHaveTextContent(
+    "0",
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Minnows" }));
+  expect(count("long")).toHaveTextContent("0");
+  expect(count("short")).toHaveTextContent("0");
+  expect(within(chart).getByText("ZEC")).toBeVisible();
+  expect(within(chart).queryByText("ETH")).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Leviathans" }));
+  expect(count("long")).toHaveTextContent("0");
+  expect(within(chart).getByText("ETH")).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "All" }));
+  expect(count("long")).toHaveTextContent("1");
+  expect(count("short")).toHaveTextContent("1");
+});
+
 it("shows unavailable BTC counts when position data could not be loaded", async () => {
   vi.stubGlobal(
     "fetch",
@@ -792,8 +884,16 @@ it("updates tiers and filters when open position value changes", async () => {
   await waitFor(() =>
     expect(screen.queryByRole("article")).not.toBeInTheDocument(),
   );
+  const market = screen.getByRole("region", {
+    name: "Market positions across tracked wallets",
+  });
+  const btcLongs = market.querySelector(
+    ".whale-market-trigger .whale-count-box.long strong",
+  );
+  expect(btcLongs).toHaveTextContent("0");
   fireEvent.click(screen.getByRole("button", { name: "Leviathans" }));
   expect(screen.getByText("Leviathan")).toBeVisible();
+  expect(btcLongs).toHaveTextContent("1");
   fireEvent.click(screen.getByRole("button", { name: "List" }));
   const row = screen
     .getByRole("list", { name: "Wallet list" })
@@ -815,6 +915,7 @@ it("updates tiers and filters when open position value changes", async () => {
   ).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("button", { name: "Leviathans" }));
   expect(screen.queryByRole("article")).not.toBeInTheDocument();
+  expect(btcLongs).toHaveTextContent("—");
 });
 
 it.each([
