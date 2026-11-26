@@ -44,6 +44,7 @@ export interface WalletExtras {
 export interface WalletWinRates {
   updatedAt: number;
   historyLimited: boolean;
+  requestWeight?: number;
   periods: Record<
     "7d" | "30d",
     { wins: number; losses: number; breakeven: number; winRate: number | null }

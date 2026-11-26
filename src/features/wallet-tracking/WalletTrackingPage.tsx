@@ -1019,16 +1019,37 @@ export function WalletTrackingPage() {
           </p>
         </div>
         {status.data && (
-          <button
-            type="button"
-            className="wallet-manager-trigger"
-            onClick={() => {
-              setAlertWallet(undefined);
-              setManagerOpen(true);
-            }}
-          >
-            Manage wallets
-          </button>
+          <div className="whale-header-actions">
+            <button
+              className="wallet-leaderboard-trigger"
+              type="button"
+              aria-haspopup="dialog"
+              onClick={() => setLeaderboardOpen(true)}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.7"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M8 21h8M12 17v4M7 3h10v5a5 5 0 0 1-10 0V3ZM7 5H4v2a4 4 0 0 0 4 4m9-6h3v2a4 4 0 0 1-4 4" />
+              </svg>
+              Leaderboard
+            </button>
+            <button
+              type="button"
+              className="wallet-manager-trigger"
+              onClick={() => {
+                setAlertWallet(undefined);
+                setManagerOpen(true);
+              }}
+            >
+              Manage wallets
+            </button>
+          </div>
         )}
       </div>
       {managerOpen && status.data && (
@@ -1073,27 +1094,13 @@ export function WalletTrackingPage() {
           tier={selectedTier}
         />
       )}
-      {status.data && (
-        <>
-          <button
-            className="wallet-leaderboard-trigger"
-            type="button"
-            aria-expanded={leaderboardOpen}
-            aria-controls="wallet-leaderboard-content"
-            onClick={() => setLeaderboardOpen((open) => !open)}
-          >
-            {leaderboardOpen ? "Hide" : "Show"} wallet leaderboard
-          </button>
-          <div id="wallet-leaderboard-content" hidden={!leaderboardOpen}>
-            {leaderboardOpen && (
-              <WalletLeaderboard
-                key={wallets.join(",")}
-                addresses={wallets}
-                names={status.data.walletNames}
-              />
-            )}
-          </div>
-        </>
+      {status.data && leaderboardOpen && (
+        <WalletLeaderboard
+          key={wallets.join(",")}
+          addresses={wallets}
+          names={status.data.walletNames}
+          onClose={() => setLeaderboardOpen(false)}
+        />
       )}
       <div className="whale-info">
         Positions refresh about every minute while this page is open. Positions

@@ -100,6 +100,17 @@ async function info(type: string, user: string): Promise<unknown> {
       signal: AbortSignal.timeout(10_000),
       redirect: "error",
     });
+    if (response.status === 429) {
+      const retryAfter = Number(response.headers.get("retry-after"));
+      throw new ApiError(
+        "Trade history is temporarily rate limited.",
+        429,
+        "WALLET_HISTORY_RATE_LIMITED",
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(Math.ceil(retryAfter), 60)
+          : 10,
+      );
+    }
     if (!response.ok) throw new Error("Provider unavailable");
     return await response.json();
   } finally {
@@ -238,7 +249,12 @@ export async function getWalletWinRates(
     let fills: z.infer<typeof fillsSchema>;
     try {
       fills = fillsSchema.parse(await info("userFills", address));
-    } catch {
+    } catch (error) {
+      if (
+        error instanceof ApiError &&
+        error.code === "WALLET_HISTORY_RATE_LIMITED"
+      )
+        throw error;
       throw new ApiError(
         "Wallet trade history is temporarily unavailable.",
         503,
@@ -250,11 +266,15 @@ export async function getWalletWinRates(
     return {
       updatedAt,
       historyLimited: fills.length >= 2000,
+      requestWeight: 20 + Math.ceil(fills.length / 20),
       periods: {
         "7d": calculateWinRate(history, updatedAt - 7 * 86_400_000),
         "30d": calculateWinRate(history, updatedAt - 30 * 86_400_000),
       },
     };
   });
-  return result.value;
+  return {
+    ...result.value,
+    requestWeight: result.cached ? 0 : result.value.requestWeight,
+  };
 }

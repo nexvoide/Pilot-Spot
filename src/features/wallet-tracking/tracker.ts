@@ -9,6 +9,12 @@ export interface TrackerStatus {
 import type { WalletDetails, WalletExtras, WalletWinRates } from "./types";
 import { validWalletTags } from "./tags";
 
+export class WalletHistoryRateLimitError extends Error {
+  constructor(readonly retryAfterMs: number) {
+    super("Trade history is temporarily rate limited.");
+  }
+}
+
 export async function getWalletDetails(
   address: string,
   signal: AbortSignal,
@@ -43,6 +49,14 @@ export async function getWalletWinRates(
     `/api/wallet-tracking/win-rate?address=${encodeURIComponent(address)}`,
     { signal },
   );
+  if (response.status === 429) {
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    throw new WalletHistoryRateLimitError(
+      Number.isFinite(retryAfter) && retryAfter > 0
+        ? Math.min(retryAfter, 60) * 1_000
+        : 10_000,
+    );
+  }
   if (!response.ok)
     throw new Error("Trade history is temporarily unavailable.");
   return response.json() as Promise<WalletWinRates>;

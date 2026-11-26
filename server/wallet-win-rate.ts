@@ -49,37 +49,62 @@ export function calculateWinRate(
       group.set(fill.coin, same);
     }
     for (const [coin, same] of group) {
-      // Ordering cannot be proven for multiple fills on the same market and timestamp.
-      if (same.length !== 1) {
-        positions.delete(coin);
-        continue;
+      const byStart = new Map<string, HistoryFill[]>();
+      for (const fill of same) {
+        const startKey = new Decimal(fill.startPosition).toString();
+        const matching = byStart.get(startKey) ?? [];
+        matching.push(fill);
+        byStart.set(startKey, matching);
       }
-      const fill = same[0];
-      const start = new Decimal(fill.startPosition);
-      const amount = new Decimal(fill.size);
-      const change = fill.side === "B" ? amount : amount.negated();
-      const end = start.plus(change);
       let run = positions.get(coin);
-      if (run && !run.size.eq(start)) {
-        positions.delete(coin);
-        run = undefined;
-      }
-      if (!run && start.isZero()) run = { size: start, pnl: new Decimal(0) };
-      if (run) {
-        run.pnl = run.pnl.plus(fill.closedPnl);
+      let nextStart = run?.size ?? new Decimal(0);
+      let remaining = same.length;
+      while (remaining > 0) {
+        const key = nextStart.toString();
+        const matching = byStart.get(key);
         if (
-          !start.isZero() &&
-          (end.isZero() || end.isPositive() !== start.isPositive())
+          !matching &&
+          run &&
+          !nextStart.isZero() &&
+          byStart.get("0")?.length === 1
         ) {
-          if (fill.time >= since) {
-            if (run.pnl.gt(0)) wins++;
-            else if (run.pnl.lt(0)) losses++;
-            else breakeven++;
-          }
-          run = end.isZero() ? undefined : { size: end, pnl: new Decimal(0) };
-        } else {
-          run.size = end;
+          // An unobserved change broke the old cycle, but a fill starting at
+          // zero establishes a new cycle that can be counted independently.
+          run = undefined;
+          nextStart = new Decimal(0);
+          continue;
         }
+        // A unique start position proves the next fill's order; multiple
+        // candidates cannot be distinguished safely from this history.
+        if (!matching || matching.length !== 1) {
+          run = undefined;
+          break;
+        }
+        const fill = matching[0];
+        byStart.delete(key);
+        remaining--;
+        const start = new Decimal(fill.startPosition);
+        const amount = new Decimal(fill.size);
+        const change = fill.side === "B" ? amount : amount.negated();
+        const end = start.plus(change);
+        if (!run && start.isZero()) run = { size: start, pnl: new Decimal(0) };
+        if (run) {
+          run.pnl = run.pnl.plus(fill.closedPnl);
+          if (
+            !start.isZero() &&
+            (end.isZero() || end.isPositive() !== start.isPositive())
+          ) {
+            if (fill.time >= since) {
+              if (run.pnl.gt(0)) wins++;
+              else if (run.pnl.lt(0)) losses++;
+              else breakeven++;
+            }
+            run = end.isZero() ? undefined : { size: end, pnl: new Decimal(0) };
+          } else {
+            run.size = end;
+          }
+        }
+        nextStart = end;
       }
       if (run) positions.set(coin, run);
       else positions.delete(coin);

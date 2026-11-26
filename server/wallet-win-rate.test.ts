@@ -54,7 +54,7 @@ it("excludes positions with missing openings, ambiguous ordering, spot and other
   const fills = [
     fill(1, "2", "2", "A", "5"),
     fill(2, "0", "1", "B"),
-    fill(2, "1", "1", "A", "4"),
+    fill(2, "0", "2", "B"),
     fill(3, "0", "1", "B", "0", "@1"),
     fill(4, "1", "1", "A", "3", "@1"),
     fill(5, "0", "1", "B", "0", "xyz:BTC"),
@@ -65,5 +65,35 @@ it("excludes positions with missing openings, ambiguous ordering, spot and other
     losses: 0,
     breakeven: 0,
     winRate: null,
+  });
+});
+
+it("reconstructs same-time fills when start positions identify a unique order", () => {
+  const fills = [
+    fill(1, "0", "1", "B"),
+    fill(2, "2", "2", "A", "7"),
+    fill(2, "1", "1", "B"),
+    fill(3, "0", "1", "A"),
+    fill(4, "-1", "1", "B", "-2"),
+  ];
+  expect(calculateWinRate(fills, 0)).toEqual({
+    wins: 1,
+    losses: 1,
+    breakeven: 0,
+    winRate: 50,
+  });
+});
+
+it("can start a new observable cycle after a gap in position history", () => {
+  const fills = [
+    fill(1, "0", "1", "B"),
+    fill(2, "0", "1", "B"),
+    fill(3, "1", "1", "A", "2"),
+  ];
+  expect(calculateWinRate(fills, 0)).toEqual({
+    wins: 1,
+    losses: 0,
+    breakeven: 0,
+    winRate: 100,
   });
 });
