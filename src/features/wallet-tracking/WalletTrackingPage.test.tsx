@@ -42,6 +42,179 @@ afterEach(() => {
   localStorage.clear();
 });
 
+it("unlocks and changes WhatsApp alerts for the selected wallet", async () => {
+  let unlocked = false;
+  let enabled = false;
+  const version = "11111111-1111-4111-8111-111111111111";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/wallet-manager/status")
+        return Promise.resolve(
+          Response.json({ configured: true, authenticated: unlocked }),
+        );
+      if (url === "/api/wallet-manager/unlock") {
+        unlocked = true;
+        return Promise.resolve(Response.json({ authenticated: true }));
+      }
+      if (url === "/api/wallet-manager/alerts") {
+        const input = JSON.parse(String(options?.body));
+        expect(input.address).toBe(address);
+        enabled = input.enabled;
+      }
+      if (url.startsWith("/api/wallet-tracking/details"))
+        return Promise.resolve(
+          Response.json({
+            updatedAt: 100,
+            account: {
+              accountValue: 1,
+              marginUsed: 1,
+              positionValue: 1,
+              withdrawable: 0,
+              positions: [position("BTC", 1)],
+            },
+            portfolio: null,
+            orders: [],
+          }),
+        );
+      return Promise.resolve(
+        Response.json({
+          wallets: [address],
+          walletNames: { [address]: "Trader" },
+          walletAlerts: enabled ? { [address]: version } : {},
+        }),
+      );
+    }),
+  );
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Manage WhatsApp alerts for Trader, off",
+    }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Manage wallets" });
+  fireEvent.change(await within(dialog).findByLabelText("PIN"), {
+    target: { value: "73928364" },
+  });
+  fireEvent.click(within(dialog).getByRole("button", { name: "Unlock" }));
+  const alertSwitch = await within(dialog).findByRole("switch", {
+    name: "WhatsApp alerts for Trader",
+  });
+  expect(alertSwitch).toHaveAttribute("aria-checked", "false");
+  fireEvent.click(alertSwitch);
+  await waitFor(() =>
+    expect(alertSwitch).toHaveAttribute("aria-checked", "true"),
+  );
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Close wallet manager" }),
+  );
+  expect(
+    screen.getByRole("button", {
+      name: "Manage WhatsApp alerts for Trader, on",
+    }),
+  ).toBeVisible();
+});
+
+it("saves favorites, shows inactive favorites, and allows removal in list view", async () => {
+  let active = true;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        Response.json(
+          url.startsWith("/api/wallet-tracking/details")
+            ? {
+                updatedAt: 100,
+                account: {
+                  accountValue: 1,
+                  marginUsed: 1,
+                  positionValue: active ? 1 : 0,
+                  withdrawable: 0,
+                  positions: active ? [position("BTC", 1)] : [],
+                },
+                portfolio: null,
+                orders: [],
+              }
+            : { wallets: [address], walletNames: { [address]: "Trader" } },
+        ),
+      ),
+    ),
+  );
+  const page = renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Add Trader to favorites" }),
+  );
+  await waitFor(() =>
+    expect(
+      JSON.parse(
+        localStorage.getItem("spot-ladder-analyzer:favorite-wallets")!,
+      ),
+    ).toEqual([address]),
+  );
+  page.unmount();
+  active = false;
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: /Favorites/ }));
+  expect(
+    await screen.findByRole("button", { name: "Remove Trader from favorites" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  expect(
+    await screen.findByText("No open positions on the main perpetuals market."),
+  ).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "List" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: "Remove Trader from favorites" }),
+  );
+  expect(screen.getByText(/No favorite wallets yet/)).toBeVisible();
+  await waitFor(() =>
+    expect(
+      JSON.parse(
+        localStorage.getItem("spot-ladder-analyzer:favorite-wallets")!,
+      ),
+    ).toEqual([]),
+  );
+});
+
+it("shows favorites from other pages of the tracked collection", async () => {
+  const addresses = Array.from(
+    { length: 101 },
+    (_, index) => `0x${index.toString(16).padStart(40, "0")}`,
+  );
+  const last = addresses[100];
+  localStorage.setItem(
+    "spot-ladder-analyzer:favorite-wallets",
+    JSON.stringify([last]),
+  );
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(
+        Response.json(
+          url.startsWith("/api/wallet-tracking/details")
+            ? {
+                updatedAt: 100,
+                account: {
+                  accountValue: 1,
+                  marginUsed: 1,
+                  positionValue: 1,
+                  withdrawable: 0,
+                  positions: [position("BTC", 1)],
+                },
+                portfolio: null,
+                orders: [],
+              }
+            : { wallets: addresses, walletNames: { [last]: "Last wallet" } },
+        ),
+      ),
+    ),
+  );
+  renderPage();
+  fireEvent.click(await screen.findByRole("button", { name: /Favorites/ }));
+  expect(
+    await screen.findByRole("heading", { name: "Last wallet" }),
+  ).toBeVisible();
+});
+
 it("unlocks the manager with a PIN before adding and deleting wallets", async () => {
   const added = `0x${"b".repeat(40)}`;
   let wallets = [address];

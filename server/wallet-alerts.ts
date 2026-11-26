@@ -18,9 +18,20 @@ const ACK =
   "if redis.call('GET', KEYS[1]) ~= ARGV[1] then return 0 end; if redis.call('LINDEX', KEYS[2], 0) ~= ARGV[2] then return 0 end; redis.call('LPOP', KEYS[2]); return 1";
 const stateSchema = z.object({
   cursor: z.number().int().nonnegative(),
-  wallets: z.record(z.string(), z.array(z.string())),
+  wallets: z.record(
+    z.string(),
+    z.union([
+      z.array(z.string()),
+      z.object({ version: z.string(), positions: z.array(z.string()) }),
+    ]),
+  ),
 });
 type State = z.infer<typeof stateSchema>;
+const queuedAlertSchema = z.object({
+  address: z.string(),
+  version: z.string(),
+  message: z.string(),
+});
 
 function formatMoney(value: number): string {
   return new Intl.NumberFormat("en-US", {
@@ -31,12 +42,8 @@ function formatMoney(value: number): string {
   }).format(Math.abs(value));
 }
 
-function formatPositionAlert(
-  name: string,
-  position: WalletPosition,
-  detectedAt: Date,
-): string {
-  const time = new Intl.DateTimeFormat("en-GB", {
+function formatDetectionTime(detectedAt: Date): string {
+  return new Intl.DateTimeFormat("en-GB", {
     timeZone: "Asia/Karachi",
     day: "2-digit",
     month: "short",
@@ -45,6 +52,13 @@ function formatPositionAlert(
     minute: "2-digit",
     hourCycle: "h23",
   }).format(detectedAt);
+}
+
+function formatPositionAlert(
+  name: string,
+  position: WalletPosition,
+  detectedAt: Date,
+): string {
   const lines = [
     "🐋 *NEW POSITION*",
     `👤 *Wallet:* ${name}`,
@@ -76,8 +90,23 @@ function formatPositionAlert(
       `📊 *Unrealized P&L:* ${sign}${formatMoney(position.unrealizedPnl)} (snapshot)`,
     );
   }
-  lines.push(`🕒 *Detected:* ${time} PKT`);
+  lines.push(`🕒 *Detected:* ${formatDetectionTime(detectedAt)} PKT`);
   return lines.join("\n");
+}
+
+function formatPositionClosedAlert(
+  name: string,
+  coin: string,
+  direction: "LONG" | "SHORT",
+  detectedAt: Date,
+): string {
+  return [
+    "🐋 *POSITION CLOSED*",
+    `👤 *Wallet:* ${name}`,
+    `🪙 *Market:* ${coin}`,
+    direction === "LONG" ? "🟢 *Direction:* LONG" : "🔴 *Direction:* SHORT",
+    `🕒 *Detected:* ${formatDetectionTime(detectedAt)} PKT`,
+  ].join("\n");
 }
 
 function configuration() {
@@ -194,9 +223,11 @@ export async function runWalletAlerts(): Promise<{
       "ALERT_CHECK_BUSY",
     );
   try {
-    const tracked = await getWalletTrackingStatus();
+    const tracked = await getWalletTrackingStatus({ fresh: true });
     const state = readState(await redis(["GET", STATE_KEY]));
-    const addresses = tracked.wallets;
+    const addresses = tracked.wallets.filter(
+      (address) => tracked.walletAlerts[address],
+    );
     const start = addresses.length ? state.cursor % addresses.length : 0;
     const count = Math.min(addresses.length, WALLETS_PER_RUN);
     const selected = Array.from(
@@ -225,25 +256,49 @@ export async function runWalletAlerts(): Promise<{
           (position) =>
             `${position.coin}:${position.size > 0 ? "LONG" : "SHORT"}`,
         );
-        if (previous) {
-          const before = new Set(previous);
+        const version = tracked.walletAlerts[address];
+        if (
+          previous &&
+          !Array.isArray(previous) &&
+          previous.version === version
+        ) {
+          const before = new Set(previous.positions);
+          const after = new Set(next);
+          const name = tracked.walletNames[address] ?? address;
+          const detectedAt = new Date();
+          for (const position of before) {
+            if (after.has(position)) continue;
+            const match = /^(.*):(LONG|SHORT)$/.exec(position);
+            if (!match || !match[1]) continue;
+            events.push(
+              JSON.stringify({
+                address,
+                version,
+                message: formatPositionClosedAlert(
+                  name,
+                  match[1],
+                  match[2] as "LONG" | "SHORT",
+                  detectedAt,
+                ),
+              }),
+            );
+          }
           positions.forEach((position, positionIndex) => {
             if (before.has(next[positionIndex])) return;
-            const name = tracked.walletNames[address] ?? address;
-            events.push(formatPositionAlert(name, position, new Date()));
+            events.push(
+              JSON.stringify({
+                address,
+                version,
+                message: formatPositionAlert(name, position, detectedAt),
+              }),
+            );
           });
         }
-        state.wallets[address] = next;
+        state.wallets[address] = { version, positions: next };
       });
     }
     state.cursor = addresses.length ? (start + count) % addresses.length : 0;
-    const messages: string[] = [];
-    for (const event of events) {
-      const current = messages.at(-1);
-      if (current && current.length + event.length + 2 <= 18_000)
-        messages[messages.length - 1] = `${current}\n\n${event}`;
-      else messages.push(event);
-    }
+    const messages = events;
     if (
       (await redis([
         "EVAL",
@@ -263,7 +318,7 @@ export async function runWalletAlerts(): Promise<{
         "ALERT_CHECK_EXPIRED",
       );
     let sent = 0;
-    for (; sent < 5; sent++) {
+    for (let processed = 0; processed < 5; processed++) {
       const message = await redis(["LINDEX", QUEUE_KEY, 0]);
       if (message === null) break;
       if (typeof message !== "string")
@@ -272,7 +327,19 @@ export async function runWalletAlerts(): Promise<{
           503,
           "ALERT_QUEUE_INVALID",
         );
-      await sendMessage(config, message);
+      let alert: z.infer<typeof queuedAlertSchema> | undefined;
+      try {
+        alert = queuedAlertSchema.parse(JSON.parse(message));
+      } catch {
+        // Discard legacy or invalid queue entries rather than sending unselected wallets.
+      }
+      if (alert) {
+        const latest = await getWalletTrackingStatus({ fresh: true });
+        if (latest.walletAlerts[alert.address] === alert.version) {
+          await sendMessage(config, alert.message);
+          sent++;
+        }
+      }
       if (
         (await redis(["EVAL", ACK, 2, LOCK_KEY, QUEUE_KEY, token, message])) !==
         1

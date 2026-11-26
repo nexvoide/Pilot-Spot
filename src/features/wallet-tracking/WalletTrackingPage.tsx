@@ -9,9 +9,68 @@ import type { WalletDetails, WalletPosition } from "./types";
 import type { CapitalSnapshot } from "./capital";
 import { positionTier, type PositionTier } from "./position-tier";
 import { WalletManager } from "./WalletManager";
+import {
+  getBrowserStorage,
+  readJson,
+  writeJson,
+} from "@/lib/persistence/storage";
 
 const REFRESH_MS = 60_000;
 const PAGE_SIZE = 100;
+const FAVORITES_KEY = "spot-ladder-analyzer:favorite-wallets";
+
+function readFavorites(): Set<string> {
+  const stored = readJson<unknown>(getBrowserStorage(), FAVORITES_KEY);
+  return new Set(
+    Array.isArray(stored)
+      ? stored
+          .filter(
+            (value): value is string =>
+              typeof value === "string" && /^0x[0-9a-f]{40}$/i.test(value),
+          )
+          .map((value) => value.toLowerCase())
+      : [],
+  );
+}
+
+function FavoriteButton({
+  name,
+  favorite,
+  onToggle,
+}: {
+  name: string;
+  favorite: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="whale-favorite"
+      aria-label={`${favorite ? "Remove" : "Add"} ${name} ${favorite ? "from" : "to"} favorites`}
+      aria-pressed={favorite}
+      onClick={onToggle}
+    >
+      <HeartIcon filled={favorite} />
+    </button>
+  );
+}
+
+function HeartIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg
+      className="whale-heart-icon"
+      viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M20.8 4.9a5.5 5.5 0 0 0-7.8 0l-1 1-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.3 1-1a5.5 5.5 0 0 0 0-7.8Z" />
+    </svg>
+  );
+}
 const compactNumber = new Intl.NumberFormat("en-US", {
   notation: "compact",
   maximumFractionDigits: 2,
@@ -457,11 +516,21 @@ function WalletCard({
   name,
   query,
   capital,
+  favorite,
+  onToggleFavorite,
+  showFavoriteButton = true,
+  alertsEnabled,
+  onManageAlerts,
 }: {
   address: string;
   name: string;
   query: UseQueryResult<WalletDetails, Error>;
   capital?: CapitalSnapshot;
+  favorite: boolean;
+  onToggleFavorite: () => void;
+  showFavoriteButton?: boolean;
+  alertsEnabled: boolean;
+  onManageAlerts: () => void;
 }) {
   const details = query.data;
   const cardRef = useRef<HTMLElement>(null);
@@ -519,11 +588,28 @@ function WalletCard({
             )}
           </div>
         </div>
-        <span className="whale-card-count">
-          {details?.account
-            ? `${details.account.positions.length} open`
-            : "Perps"}
-        </span>
+        <div className="whale-card-actions">
+          <button
+            type="button"
+            className="whale-alert-button"
+            onClick={onManageAlerts}
+            aria-label={`Manage WhatsApp alerts for ${name}, ${alertsEnabled ? "on" : "off"}`}
+          >
+            Alerts {alertsEnabled ? "on" : "off"}
+          </button>
+          <span className="whale-card-count">
+            {details?.account
+              ? `${details.account.positions.length} open`
+              : "Perps"}
+          </span>
+          {showFavoriteButton && (
+            <FavoriteButton
+              name={name}
+              favorite={favorite}
+              onToggle={onToggleFavorite}
+            />
+          )}
+        </div>
       </div>
       {!details ? (
         <p className="whale-card-message" role="status">
@@ -676,11 +762,19 @@ function WalletListRow({
   name,
   query,
   capital,
+  favorite,
+  onToggleFavorite,
+  alertsEnabled,
+  onManageAlerts,
 }: {
   address: string;
   name: string;
   query: UseQueryResult<WalletDetails, Error>;
   capital?: CapitalSnapshot;
+  favorite: boolean;
+  onToggleFavorite: () => void;
+  alertsEnabled: boolean;
+  onManageAlerts: () => void;
 }) {
   const account = query.data?.account;
   const pnl = openPnl(account?.positions);
@@ -732,18 +826,38 @@ function WalletListRow({
             name={name}
             query={query}
             capital={capital}
+            favorite={favorite}
+            onToggleFavorite={onToggleFavorite}
+            showFavoriteButton={false}
+            alertsEnabled={alertsEnabled}
+            onManageAlerts={onManageAlerts}
           />
         </div>
       </details>
+      <button
+        type="button"
+        className="whale-alert-button whale-list-alert"
+        onClick={onManageAlerts}
+        aria-label={`Manage WhatsApp alerts for ${name}, ${alertsEnabled ? "on" : "off"}`}
+      >
+        Alerts {alertsEnabled ? "on" : "off"}
+      </button>
+      <FavoriteButton
+        name={name}
+        favorite={favorite}
+        onToggle={onToggleFavorite}
+      />
     </li>
   );
 }
 
 export function WalletTrackingPage() {
   const [managerOpen, setManagerOpen] = useState(false);
+  const [alertWallet, setAlertWallet] = useState<string | undefined>();
   const [view, setView] = useState<"cards" | "list">("cards");
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState("");
+  const [favorites, setFavorites] = useState(readFavorites);
   const [filter, setFilter] = useState<
     | "all"
     | "profit"
@@ -753,7 +867,21 @@ export function WalletTrackingPage() {
     | "shark"
     | "minnow"
     | "leverage"
+    | "favorites"
   >("all");
+  useEffect(() => {
+    writeJson(getBrowserStorage(), FAVORITES_KEY, [...favorites]);
+  }, [favorites]);
+
+  function toggleFavorite(address: string) {
+    const normalized = address.toLowerCase();
+    setFavorites((current) => {
+      const next = new Set(current);
+      if (next.has(normalized)) next.delete(normalized);
+      else next.add(normalized);
+      return next;
+    });
+  }
   useEffect(() => {
     try {
       localStorage.removeItem("spot-ladder-analyzer:tracker-connection");
@@ -769,7 +897,11 @@ export function WalletTrackingPage() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  const collection = status.data?.wallets ?? [];
+  const allWallets = status.data?.wallets ?? [];
+  const collection =
+    filter === "favorites"
+      ? allWallets.filter((address) => favorites.has(address.toLowerCase()))
+      : allWallets;
   const pageCount = Math.max(1, Math.ceil(collection.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount - 1);
   const wallets = collection.slice(
@@ -792,6 +924,7 @@ export function WalletTrackingPage() {
     .map((address, index) => ({ address, query: details[index], index }))
     .filter(
       ({ query }) =>
+        filter === "favorites" ||
         !query.data?.account ||
         query.data.account.positions.length > 0 ||
         query.isError,
@@ -863,7 +996,10 @@ export function WalletTrackingPage() {
           <button
             type="button"
             className="wallet-manager-trigger"
-            onClick={() => setManagerOpen(true)}
+            onClick={() => {
+              setAlertWallet(undefined);
+              setManagerOpen(true);
+            }}
           >
             Manage wallets
           </button>
@@ -872,6 +1008,7 @@ export function WalletTrackingPage() {
       {managerOpen && status.data && (
         <WalletManager
           status={status.data}
+          alertWallet={alertWallet}
           onClose={() => setManagerOpen(false)}
         />
       )}
@@ -934,7 +1071,10 @@ export function WalletTrackingPage() {
             <div>
               <p className="eyebrow">WALLET WATCHLIST</p>
               <h2>
-                Open wallets <span>{activeCount}</span>
+                {filter === "favorites" ? "Favorite wallets" : "Open wallets"}{" "}
+                <span>
+                  {filter === "favorites" ? collection.length : activeCount}
+                </span>
               </h2>
             </div>
             <div className="whale-list-tools">
@@ -988,19 +1128,22 @@ export function WalletTrackingPage() {
                   key={value}
                   type="button"
                   aria-pressed={filter === value}
-                  onClick={() => setFilter(value)}
+                  onClick={() => {
+                    setFilter(value);
+                    setPage(0);
+                  }}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <div
-              className="whale-capital-filters"
-              role="group"
-              aria-label="Filter by position tier"
-            >
+            <div className="whale-capital-filters">
               <span>Position tier</span>
-              <div className="whale-filters">
+              <div
+                className="whale-filters"
+                role="group"
+                aria-label="Filter by position tier"
+              >
                 {(
                   [
                     ["minnow", "Minnows"],
@@ -1014,11 +1157,27 @@ export function WalletTrackingPage() {
                     type="button"
                     className={`whale-tier-button category-${value}`}
                     aria-pressed={filter === value}
-                    onClick={() => setFilter(value)}
+                    onClick={() => {
+                      setFilter(value);
+                      setPage(0);
+                    }}
                   >
                     {label}
                   </button>
                 ))}
+              </div>
+              <div className="whale-filters">
+                <button
+                  type="button"
+                  className="whale-favorites-filter"
+                  aria-pressed={filter === "favorites"}
+                  onClick={() => {
+                    setFilter("favorites");
+                    setPage(0);
+                  }}
+                >
+                  <HeartIcon filled={filter === "favorites"} /> Favorites
+                </button>
               </div>
             </div>
           </div>
@@ -1031,6 +1190,13 @@ export function WalletTrackingPage() {
                   name={status.data.walletNames[address] ?? "Wallet"}
                   query={query}
                   capital={capital[address]}
+                  favorite={favorites.has(address.toLowerCase())}
+                  onToggleFavorite={() => toggleFavorite(address)}
+                  alertsEnabled={Boolean(status.data.walletAlerts?.[address])}
+                  onManageAlerts={() => {
+                    setAlertWallet(address);
+                    setManagerOpen(true);
+                  }}
                 />
               ))}
             </div>
@@ -1043,16 +1209,25 @@ export function WalletTrackingPage() {
                   name={status.data.walletNames[address] ?? "Wallet"}
                   query={query}
                   capital={capital[address]}
+                  favorite={favorites.has(address.toLowerCase())}
+                  onToggleFavorite={() => toggleFavorite(address)}
+                  alertsEnabled={Boolean(status.data.walletAlerts?.[address])}
+                  onManageAlerts={() => {
+                    setAlertWallet(address);
+                    setManagerOpen(true);
+                  }}
                 />
               ))}
             </ul>
           ) : (
             <p className="field-help">
-              {sortedWallets.length && (searchTerm || filter !== "all")
-                ? "No wallets match your search or filter."
-                : wallets.length
-                  ? "No tracked wallets currently have open positions on the main perpetuals market."
-                  : "No wallets are being tracked yet."}
+              {filter === "favorites" && collection.length === 0
+                ? "No favorite wallets yet. Select the heart on a wallet to add it here."
+                : sortedWallets.length && (searchTerm || filter !== "all")
+                  ? "No wallets match your search or filter."
+                  : wallets.length
+                    ? "No tracked wallets currently have open positions on the main perpetuals market."
+                    : "No wallets are being tracked yet."}
             </p>
           )}
         </>

@@ -2,6 +2,7 @@ export interface TrackerStatus {
   wallets: string[];
   walletNames: Record<string, string>;
   walletCapital?: Record<string, { valueUsd: number; asOf: string }>;
+  walletAlerts?: Record<string, string>;
 }
 
 import type { WalletDetails, WalletExtras } from "./types";
@@ -61,6 +62,16 @@ export async function getTrackerStatus(
         name.length <= 100 &&
         !/\p{Cc}/u.test(name),
     ) ||
+    ("walletAlerts" in result &&
+      (!result.walletAlerts ||
+        typeof result.walletAlerts !== "object" ||
+        Array.isArray(result.walletAlerts) ||
+        !Object.entries(result.walletAlerts).every(
+          ([address, version]) =>
+            (result.wallets as unknown[]).includes(address) &&
+            typeof version === "string" &&
+            /^[0-9a-f-]{36}$/.test(version),
+        ))) ||
     ("walletCapital" in result &&
       (!result.walletCapital ||
         typeof result.walletCapital !== "object" ||

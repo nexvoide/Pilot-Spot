@@ -39,9 +39,11 @@ async function request(path: string, options?: RequestInit): Promise<unknown> {
 export function WalletManager({
   status,
   onClose,
+  alertWallet,
 }: {
   status: TrackerStatus;
   onClose: () => void;
+  alertWallet?: string;
 }) {
   const queryClient = useQueryClient();
   const dialog = useRef<HTMLDivElement>(null);
@@ -176,6 +178,46 @@ export function WalletManager({
     });
   }
 
+  function toggleAlerts(wallet: string) {
+    void action(async () => {
+      const updated = await request("/alerts", {
+        method: "POST",
+        body: JSON.stringify({
+          address: wallet,
+          enabled: !status.walletAlerts?.[wallet],
+        }),
+      });
+      if (
+        !updated ||
+        typeof updated !== "object" ||
+        !("walletAlerts" in updated) ||
+        !updated.walletAlerts ||
+        typeof updated.walletAlerts !== "object" ||
+        !("wallets" in updated) ||
+        !Array.isArray(updated.wallets)
+      )
+        throw new Error("Alert setting could not be refreshed.");
+      queryClient.setQueryData(["wallet-tracking"], updated);
+    });
+  }
+
+  function alertButton(wallet: string) {
+    const enabled = Boolean(status.walletAlerts?.[wallet]);
+    return (
+      <button
+        type="button"
+        className="wallet-alert-switch"
+        role="switch"
+        aria-checked={enabled}
+        aria-label={`WhatsApp alerts for ${status.walletNames[wallet] ?? wallet}`}
+        disabled={pending}
+        onClick={() => toggleAlerts(wallet)}
+      >
+        WhatsApp alerts {enabled ? "on" : "off"}
+      </button>
+    );
+  }
+
   return (
     <div
       className="wallet-manager-backdrop"
@@ -250,7 +292,7 @@ export function WalletManager({
         {session?.configured && !session.authenticated && (
           <form className="wallet-manager-form" onSubmit={unlock}>
             <p className="wallet-manager-muted">
-              Enter your PIN to add or remove wallets.
+              Enter your PIN to manage wallets and WhatsApp alerts.
             </p>
             <label>
               PIN
@@ -272,6 +314,19 @@ export function WalletManager({
         )}
         {session?.authenticated && (
           <>
+            {alertWallet && status.wallets.includes(alertWallet) && (
+              <div className="wallet-alert-selected">
+                <strong>
+                  {status.walletNames[alertWallet] ?? alertWallet}
+                </strong>
+                {alertButton(alertWallet)}
+                <p>
+                  Requires the configured WhatsApp alert worker. The first check
+                  establishes a baseline; later new and closed positions are
+                  sent to the configured group.
+                </p>
+              </div>
+            )}
             <form
               className="wallet-manager-form wallet-manager-add"
               onSubmit={addWallet}
@@ -324,33 +379,37 @@ export function WalletManager({
                     <strong>{status.walletNames[wallet] ?? "Wallet"}</strong>
                     <code>{wallet}</code>
                   </div>
-                  {confirmDelete === wallet ? (
-                    <div className="wallet-manager-actions">
+                  <div className="wallet-manager-actions">
+                    {wallet !== alertWallet && alertButton(wallet)}
+                    {confirmDelete === wallet ? (
+                      <div className="wallet-manager-actions">
+                        <button
+                          type="button"
+                          className="wallet-manager-confirm-delete"
+                          disabled={pending}
+                          onClick={() => removeWallet(wallet)}
+                        >
+                          Confirm delete
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => setConfirmDelete(null)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : (
                       <button
                         type="button"
                         disabled={pending}
-                        onClick={() => removeWallet(wallet)}
+                        onClick={() => setConfirmDelete(wallet)}
+                        aria-label={`Delete ${status.walletNames[wallet] ?? wallet}`}
                       >
-                        Confirm delete
+                        Delete
                       </button>
-                      <button
-                        type="button"
-                        disabled={pending}
-                        onClick={() => setConfirmDelete(null)}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => setConfirmDelete(wallet)}
-                      aria-label={`Delete ${status.walletNames[wallet] ?? wallet}`}
-                    >
-                      Delete
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

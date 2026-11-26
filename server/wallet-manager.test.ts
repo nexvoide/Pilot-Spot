@@ -31,6 +31,18 @@ vi.mock("./wallet-storage.js", () => ({
       return count;
     }
     const raw = fake.data.get(key) ?? String(command[4]);
+    if (String(command[1]).includes("wallet.alertVersion")) {
+      const list = JSON.parse(raw) as Array<{
+        address: string;
+        alertVersion?: string;
+      }>;
+      const wallet = list.find((item) => item.address === command[5]);
+      if (!wallet) return "missing";
+      if (command[6]) wallet.alertVersion ??= String(command[6]);
+      else delete wallet.alertVersion;
+      fake.data.set(key, JSON.stringify(list));
+      return "ok";
+    }
     if (!String(command[1]).includes("local list")) {
       fake.data.set(key, raw);
       return raw;
@@ -234,6 +246,78 @@ it("validates addresses and rejects cross-site requests", async () => {
       })
     ).code,
   ).toBe(403);
+});
+
+it("requires an authenticated session to change per-wallet alerts", async () => {
+  const address = `0x${"a".repeat(40)}`;
+  expect(
+    (
+      await call("/api/wallet-manager/alerts", {
+        method: "POST",
+        body: { address, enabled: true },
+      })
+    ).code,
+  ).toBe(401);
+  const login = await call("/api/wallet-manager/unlock", {
+    method: "POST",
+    body: { pin: "73928364" },
+  });
+  const cookie = login.headers["set-cookie"].split(";")[0];
+  expect(
+    (
+      await call("/api/wallet-manager/alerts", {
+        method: "POST",
+        cookie,
+        body: { address, enabled: true },
+      })
+    ).code,
+  ).toBe(404);
+  await call("/api/wallet-manager/wallets", {
+    method: "POST",
+    cookie,
+    body: { address, name: "Trader" },
+  });
+  const enabled = await call("/api/wallet-manager/alerts", {
+    method: "POST",
+    cookie,
+    body: { address, enabled: true },
+  });
+  expect(enabled.code).toBe(200);
+  const version = (enabled.data.walletAlerts as Record<string, string>)[
+    address
+  ];
+  expect(version).toMatch(/^[0-9a-f-]{36}$/);
+  const repeat = await call("/api/wallet-manager/alerts", {
+    method: "POST",
+    cookie,
+    body: { address, enabled: true },
+  });
+  expect((repeat.data.walletAlerts as Record<string, string>)[address]).toBe(
+    version,
+  );
+  const disabled = await call("/api/wallet-manager/alerts", {
+    method: "POST",
+    cookie,
+    body: { address, enabled: false },
+  });
+  expect(disabled.data.walletAlerts).toEqual({});
+  const reenabled = await call("/api/wallet-manager/alerts", {
+    method: "POST",
+    cookie,
+    body: { address, enabled: true },
+  });
+  expect(
+    (reenabled.data.walletAlerts as Record<string, string>)[address],
+  ).not.toBe(version);
+  expect(
+    (
+      await call("/api/wallet-manager/alerts", {
+        method: "POST",
+        cookie,
+        body: { address, enabled: "true" },
+      })
+    ).code,
+  ).toBe(400);
 });
 
 it("limits PIN attempts and invalidates sessions when the PIN changes", async () => {

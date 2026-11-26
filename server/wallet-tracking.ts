@@ -3,6 +3,7 @@ import {
   type TrackedWallet,
 } from "../src/features/wallet-tracking/wallets.js";
 import { ApiError } from "./errors.js";
+import { randomUUID } from "node:crypto";
 import { redis, storageMentioned, WALLET_KEY } from "./wallet-storage.js";
 
 const INITIAL = JSON.stringify(trackedWallets);
@@ -27,6 +28,9 @@ function validateWallets(value: unknown): TrackedWallet[] {
       item.name !== item.name.trim() ||
       item.name.length > 100 ||
       /\p{Cc}/u.test(item.name) ||
+      (item.alertVersion !== undefined &&
+        (typeof item.alertVersion !== "string" ||
+          !/^[0-9a-f-]{36}$/.test(item.alertVersion))) ||
       (item.capitalSnapshot &&
         (!Number.isFinite(item.capitalSnapshot.valueUsd) ||
           item.capitalSnapshot.valueUsd < 0 ||
@@ -39,10 +43,11 @@ function validateWallets(value: unknown): TrackedWallet[] {
   return value as TrackedWallet[];
 }
 
-async function collection(): Promise<TrackedWallet[]> {
+async function collection(fresh = false): Promise<TrackedWallet[]> {
   if (!storageMentioned()) return validateWallets(trackedWallets);
-  if (cached && cached.expiresAt > Date.now()) return cached.value;
-  if (pending) return pending;
+  if (!fresh && cached && cached.expiresAt > Date.now()) return cached.value;
+  if (pending) await pending;
+  if (!fresh && cached && cached.expiresAt > Date.now()) return cached.value;
   pending = (async () => {
     const raw = await redis(["EVAL", READ, 1, WALLET_KEY, INITIAL]);
     try {
@@ -67,8 +72,8 @@ export async function isTrackedWallet(address: string): Promise<boolean> {
   return (await collection()).some((wallet) => wallet.address === address);
 }
 
-export async function getWalletTrackingStatus() {
-  const wallets = await collection();
+export async function getWalletTrackingStatus(options?: { fresh?: boolean }) {
+  const wallets = await collection(options?.fresh);
   return {
     wallets: wallets.map(({ address }) => address),
     walletNames: Object.fromEntries(
@@ -79,7 +84,55 @@ export async function getWalletTrackingStatus() {
         capitalSnapshot ? [[address, capitalSnapshot]] : [],
       ),
     ),
+    walletAlerts: Object.fromEntries(
+      wallets.flatMap(({ address, alertVersion }) =>
+        alertVersion ? [[address, alertVersion]] : [],
+      ),
+    ),
   };
+}
+
+const SET_ALERT = `
+local raw = redis.call('GET', KEYS[1]) or ARGV[1]
+local list = cjson.decode(raw)
+for _, wallet in ipairs(list) do
+  if wallet.address == ARGV[2] then
+    if ARGV[3] == '' then wallet.alertVersion = nil
+    elseif not wallet.alertVersion then wallet.alertVersion = ARGV[3] end
+    redis.call('SET', KEYS[1], cjson.encode(list))
+    return 'ok'
+  end
+end
+return 'missing'
+`;
+
+export async function setWalletAlert(address: string, enabled: boolean) {
+  if (!/^0x[0-9a-f]{40}$/.test(address))
+    throw new ApiError("Enter a valid wallet address.", 400, "INVALID_WALLET");
+  const result = await redis([
+    "EVAL",
+    SET_ALERT,
+    1,
+    WALLET_KEY,
+    INITIAL,
+    address,
+    enabled ? randomUUID() : "",
+  ]);
+  if (result === "missing")
+    throw new ApiError(
+      "This wallet is no longer tracked.",
+      404,
+      "WALLET_NOT_FOUND",
+    );
+  if (result !== "ok")
+    throw new ApiError(
+      "Wallet storage is temporarily unavailable.",
+      503,
+      "WALLET_STORAGE_UNAVAILABLE",
+    );
+  if (pending) await pending.catch(() => undefined);
+  cached = undefined;
+  return getWalletTrackingStatus({ fresh: true });
 }
 
 const MUTATE = `

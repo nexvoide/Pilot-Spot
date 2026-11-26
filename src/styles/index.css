@@ -3227,7 +3227,9 @@ body { -webkit-tap-highlight-color: transparent; }
 .whale-view-switch button[aria-pressed="true"] { background: #2a3c56; color: #f3f7ff; }
 .whale-view-switch button:focus-visible, .whale-list-row:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 2px; }
 .whale-compact-list { display: grid; gap: .6rem; margin: 0; padding: 0; list-style: none; }
-.whale-list-item { min-width: 0; border: 1px solid #2d394e; border-radius: .75rem; background: #171f2c; }
+.whale-list-item { display: flex; align-items: flex-start; min-width: 0; border: 1px solid #2d394e; border-radius: .75rem; background: #171f2c; }
+.whale-list-detail { flex: 1; min-width: 0; }
+.whale-list-item > .whale-favorite { flex: none; margin: .7rem .7rem 0 0; }
 .whale-list-row { display: grid; grid-template-columns: minmax(9rem, 1.3fr) minmax(8rem, 1fr) minmax(6rem, .8fr) minmax(6rem, .8fr) auto; align-items: center; gap: .9rem; padding: .85rem 1rem; cursor: pointer; list-style: none; }
 .whale-list-row::-webkit-details-marker { display: none; }
 .whale-list-name, .whale-list-cell { display: grid; min-width: 0; gap: .3rem; }
@@ -3251,6 +3253,22 @@ body { -webkit-tap-highlight-color: transparent; }
 .whale-identity h3 { margin: 0 0 .25rem; color: #f3f7ff; font-size: 1rem; }
 .whale-identity code { display: block; overflow: hidden; color: #8797af; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
 .whale-card-count { flex-shrink: 0; padding: .3rem .55rem; border: 1px solid #3a4b61; border-radius: 999px; color: #b7c7dc; font-size: .68rem; font-weight: 700; }
+.whale-card-actions { display: flex; align-items: center; flex-shrink: 0; gap: .4rem; }
+.whale-favorite { display: grid; place-items: center; width: 2.2rem; height: 2.2rem; padding: 0; border: 0; border-radius: .5rem; background: transparent; color: #aebfd4; cursor: pointer; }
+.whale-favorite:hover { background: #26334a; }
+.whale-favorite[aria-pressed="true"] { color: #f37890; }
+.whale-heart-icon { width: 1.15rem; height: 1.15rem; flex: none; }
+.whale-filters .whale-favorites-filter { display: inline-flex; align-items: center; gap: .35rem; }
+.whale-filters .whale-heart-icon { width: .85rem; height: .85rem; }
+.whale-favorite:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 2px; }
+.whale-alert-button { padding: .4rem .55rem; border: 1px solid #40516a; border-radius: .5rem; background: transparent; color: #c5d3e5; font-size: .7rem; white-space: nowrap; cursor: pointer; }
+.whale-alert-button:hover, .wallet-alert-switch:hover { background: #263b51; }
+.whale-alert-button:focus-visible, .wallet-alert-switch:focus-visible { outline: 2px solid #8bb6ff; outline-offset: 2px; }
+.whale-list-alert { flex: none; margin-top: .7rem; }
+.wallet-alert-switch { padding: .45rem .65rem; border: 1px solid #40516a; border-radius: .5rem; background: #19253a; color: #c5d3e5; font-size: .72rem; cursor: pointer; }
+.wallet-alert-switch[aria-checked="true"] { border-color: #398f70; background: #174b3a; color: #a9f4d3; }
+.wallet-alert-selected { display: flex; align-items: center; flex-wrap: wrap; gap: .75rem; padding: .8rem; border: 1px solid #344454; border-radius: .6rem; }
+.wallet-alert-selected p { flex-basis: 100%; margin: 0; color: #aabbd1; font-size: .75rem; line-height: 1.5; }
 .whale-summary-grid, .whale-position-grid { display: grid; margin: 0; gap: .65rem .75rem; }
 .whale-summary-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin: .85rem 0; padding: .8rem; border-radius: .7rem; background: #101824; }
 .whale-metric { min-width: 0; }
@@ -3364,6 +3382,7 @@ body { -webkit-tap-highlight-color: transparent; }
 .wallet-manager-list code { overflow: hidden; color: #9fb0c6; font-size: .68rem; text-overflow: ellipsis; white-space: nowrap; }
 .wallet-manager-list li > button { color: #ffc2ca; }
 .wallet-manager-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .3rem; }
-.wallet-manager-actions button:first-child { border-color: #a64f5c; background: #6e2938; }
+.wallet-manager .wallet-manager-confirm-delete { border-color: #a64f5c; background: #6e2938; }
+.wallet-manager .wallet-alert-switch[aria-checked="true"] { border-color: #398f70; background: #174b3a; color: #a9f4d3; }
 @media (max-width: 600px) { .wallet-manager-backdrop { padding: .5rem; } .wallet-manager { padding: 1rem; } .wallet-manager-list li { align-items: flex-start; } }
 

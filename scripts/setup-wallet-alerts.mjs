@@ -1,13 +1,25 @@
 const {
   QSTASH_TOKEN: token,
+  QSTASH_URL: configuredQstashUrl,
   WALLET_ALERTS_CRON_SECRET: secret,
   ALERTS_SITE_URL: site,
 } = process.env;
+const qstashUrl = configuredQstashUrl || "https://qstash.upstash.io";
 
 if (!token || !secret || secret.length < 32 || !site) {
   console.error(
     "Set QSTASH_TOKEN, WALLET_ALERTS_CRON_SECRET (at least 32 characters), and ALERTS_SITE_URL in .env.local.",
   );
+  process.exit(1);
+}
+
+const qstashHosts = new Set([
+  "https://qstash.upstash.io",
+  "https://qstash-eu-central-1.upstash.io",
+  "https://qstash-us-east-1.upstash.io",
+]);
+if (!qstashHosts.has(qstashUrl.replace(/\/$/, ""))) {
+  console.error("QSTASH_URL must be an official Upstash QStash regional URL.");
   process.exit(1);
 }
 
@@ -33,7 +45,7 @@ try {
 try {
   const destination = new URL("/api/wallet-alerts", siteUrl).href;
   const response = await fetch(
-    `https://qstash.upstash.io/v2/schedules/${destination}`,
+    `${qstashUrl.replace(/\/$/, "")}/v2/schedules/${destination}`,
     {
       method: "POST",
       headers: {

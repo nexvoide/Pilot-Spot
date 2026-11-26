@@ -19,6 +19,7 @@ import { runWalletAlerts } from "./wallet-alerts.js";
 import handler from "../api/wallet-alerts.js";
 
 const address = "0x3ff54fd26855db3758d0b5ae7aed47440c47f705";
+const version = "11111111-1111-4111-8111-111111111111";
 let state: string | null;
 let queue: string[];
 let lock: string | null;
@@ -36,6 +37,7 @@ beforeEach(() => {
     wallets: [address],
     walletNames: { [address]: "Sub18" },
     walletCapital: {},
+    walletAlerts: { [address]: version },
   });
   mocks.details.mockResolvedValue({ account: { positions: [] } });
   mocks.redis.mockImplementation(async (command: (string | number)[]) => {
@@ -78,10 +80,12 @@ beforeEach(() => {
   });
   vi.stubGlobal(
     "fetch",
-    vi.fn().mockResolvedValue(
-      new Response(JSON.stringify({ idMessage: "message-id" }), {
-        status: 200,
-      }),
+    vi.fn().mockImplementation(() =>
+      Promise.resolve(
+        new Response(JSON.stringify({ idMessage: "message-id" }), {
+          status: 200,
+        }),
+      ),
     ),
   );
 });
@@ -200,11 +204,71 @@ describe("wallet alerts", () => {
       },
     });
     await runWalletAlerts();
-    const options = vi.mocked(fetch).mock.calls[0][1];
-    const message = JSON.parse(String(options?.body)).message;
+    expect(fetch).toHaveBeenCalledTimes(2);
+    const closed = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[0][1]?.body),
+    ).message;
+    expect(closed).toContain("*POSITION CLOSED*");
+    expect(closed).toContain("*Direction:* LONG");
+    const message = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[1][1]?.body),
+    ).message;
+    expect(message).toContain("*NEW POSITION*");
     expect(message).toContain("🪙 *Market:* BTC");
     expect(message).toContain("🔴 *Direction:* SHORT");
     expect(message).not.toContain("undefined");
+  });
+
+  it.each([
+    ["LONG", 1],
+    ["SHORT", -1],
+  ])("alerts once when a %s position closes", async (direction, size) => {
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "BTC", size }] },
+    });
+    await runWalletAlerts();
+    mocks.details.mockResolvedValue({ account: { positions: [] } });
+    await runWalletAlerts();
+    const message = JSON.parse(
+      String(vi.mocked(fetch).mock.calls[0][1]?.body),
+    ).message;
+    expect(message).toContain("*POSITION CLOSED*");
+    expect(message).toContain("*Wallet:* Sub18");
+    expect(message).toContain("*Market:* BTC");
+    expect(message).toContain(`*Direction:* ${direction}`);
+    expect(message).not.toContain("P&L");
+    expect(message).toMatch(/🕒 \*Detected:\* .+ PKT/);
+    await runWalletAlerts();
+    expect(fetch).toHaveBeenCalledOnce();
+  });
+
+  it("does not report a partial reduction as a full close", async () => {
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "BTC", size: 2 }] },
+    });
+    await runWalletAlerts();
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "BTC", size: 1 }] },
+    });
+    await runWalletAlerts();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("retries a rejected close alert without creating another one", async () => {
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "BTC", size: -1 }] },
+    });
+    await runWalletAlerts();
+    mocks.details.mockResolvedValue({ account: { positions: [] } });
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 503 }));
+    await expect(runWalletAlerts()).rejects.toThrow("WhatsApp alert delivery");
+    expect(queue).toHaveLength(1);
+    await runWalletAlerts();
+    expect(queue).toHaveLength(0);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(
+      JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body)).message,
+    ).toContain("*POSITION CLOSED*");
   });
 
   it("continues checking larger wallet lists across scheduled runs", async () => {
@@ -216,11 +280,54 @@ describe("wallet alerts", () => {
       wallets,
       walletNames: {},
       walletCapital: {},
+      walletAlerts: Object.fromEntries(
+        wallets.map((wallet) => [wallet, version]),
+      ),
     });
     expect((await runWalletAlerts()).checked).toBe(20);
     expect(mocks.details).not.toHaveBeenCalledWith(wallets[20]);
     await runWalletAlerts();
     expect(mocks.details).toHaveBeenCalledWith(wallets[20]);
+  });
+
+  it("checks only enabled wallets and discards queued alerts after they are disabled", async () => {
+    const other = `0x${"b".repeat(40)}`;
+    mocks.tracked.mockResolvedValue({
+      wallets: [address, other],
+      walletNames: {},
+      walletAlerts: { [address]: version },
+    });
+    await runWalletAlerts();
+    expect(mocks.details).toHaveBeenCalledWith(address);
+    expect(mocks.details).not.toHaveBeenCalledWith(other);
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "ETH", size: 1 }] },
+    });
+    vi.mocked(fetch).mockResolvedValueOnce(new Response("", { status: 503 }));
+    await expect(runWalletAlerts()).rejects.toThrow("WhatsApp alert delivery");
+    expect(queue).toHaveLength(1);
+    mocks.tracked.mockResolvedValue({
+      wallets: [address, other],
+      walletNames: {},
+      walletAlerts: {},
+    });
+    await runWalletAlerts();
+    expect(queue).toHaveLength(0);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("starts a new baseline when a wallet is re-enabled", async () => {
+    await runWalletAlerts();
+    mocks.tracked.mockResolvedValue({
+      wallets: [address],
+      walletNames: {},
+      walletAlerts: { [address]: "22222222-2222-4222-8222-222222222222" },
+    });
+    mocks.details.mockResolvedValue({
+      account: { positions: [{ coin: "ETH", size: 1 }] },
+    });
+    await runWalletAlerts();
+    expect(fetch).not.toHaveBeenCalled();
   });
 
   it("does not expose the scheduled endpoint without its secret", async () => {
