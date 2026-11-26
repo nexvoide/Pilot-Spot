@@ -5,6 +5,7 @@ import {
 import { ApiError } from "./errors.js";
 import { randomUUID } from "node:crypto";
 import { redis, storageMentioned, WALLET_KEY } from "./wallet-storage.js";
+import { validWalletTags } from "../src/features/wallet-tracking/tags.js";
 
 const INITIAL = JSON.stringify(trackedWallets);
 const MAX_WALLETS = 10_000;
@@ -28,6 +29,7 @@ function validateWallets(value: unknown): TrackedWallet[] {
       item.name !== item.name.trim() ||
       item.name.length > 100 ||
       /\p{Cc}/u.test(item.name) ||
+      (item.tags !== undefined && !validWalletTags(item.tags)) ||
       (item.alertVersion !== undefined &&
         (typeof item.alertVersion !== "string" ||
           !/^[0-9a-f-]{36}$/.test(item.alertVersion))) ||
@@ -89,7 +91,61 @@ export async function getWalletTrackingStatus(options?: { fresh?: boolean }) {
         alertVersion ? [[address, alertVersion]] : [],
       ),
     ),
+    walletTags: Object.fromEntries(
+      wallets.flatMap(({ address, tags }) =>
+        tags?.length ? [[address, tags]] : [],
+      ),
+    ),
   };
+}
+
+const SET_TAGS = `
+local raw = redis.call('GET', KEYS[1]) or ARGV[1]
+local list = cjson.decode(raw)
+for _, wallet in ipairs(list) do
+  if wallet.address == ARGV[2] then
+    local tags = cjson.decode(ARGV[3])
+    if #tags == 0 then wallet.tags = nil else wallet.tags = tags end
+    redis.call('SET', KEYS[1], cjson.encode(list))
+    return 'ok'
+  end
+end
+return 'missing'
+`;
+
+export async function setWalletTags(address: string, tags: unknown) {
+  if (!/^0x[0-9a-f]{40}$/.test(address))
+    throw new ApiError("Enter a valid wallet address.", 400, "INVALID_WALLET");
+  if (!validWalletTags(tags))
+    throw new ApiError(
+      "Use up to 3 unique tags of 24 characters or fewer.",
+      400,
+      "INVALID_WALLET_TAGS",
+    );
+  const result = await redis([
+    "EVAL",
+    SET_TAGS,
+    1,
+    WALLET_KEY,
+    INITIAL,
+    address,
+    JSON.stringify(tags),
+  ]);
+  if (result === "missing")
+    throw new ApiError(
+      "This wallet is no longer tracked.",
+      404,
+      "WALLET_NOT_FOUND",
+    );
+  if (result !== "ok")
+    throw new ApiError(
+      "Wallet storage is temporarily unavailable.",
+      503,
+      "WALLET_STORAGE_UNAVAILABLE",
+    );
+  if (pending) await pending.catch(() => undefined);
+  cached = undefined;
+  return getWalletTrackingStatus({ fresh: true });
 }
 
 const SET_ALERT = `
@@ -159,6 +215,7 @@ export async function changeWallet(
   action: "add" | "delete",
   address: string,
   name?: string,
+  tags: unknown = [],
 ) {
   if (!/^0x[0-9a-f]{40}$/.test(address))
     throw new ApiError("Enter a valid wallet address.", 400, "INVALID_WALLET");
@@ -171,6 +228,12 @@ export async function changeWallet(
       400,
       "INVALID_WALLET_NAME",
     );
+  if (action === "add" && !validWalletTags(tags))
+    throw new ApiError(
+      "Use up to 3 unique tags of 24 characters or fewer.",
+      400,
+      "INVALID_WALLET_TAGS",
+    );
   const outcome = await redis([
     "EVAL",
     MUTATE,
@@ -179,7 +242,13 @@ export async function changeWallet(
     INITIAL,
     action,
     address,
-    JSON.stringify({ address, name }),
+    JSON.stringify({
+      address,
+      name,
+      ...(action === "add" && Array.isArray(tags) && tags.length
+        ? { tags }
+        : {}),
+    }),
     MAX_WALLETS,
   ]);
   if (outcome === "exists")

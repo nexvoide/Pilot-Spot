@@ -9,6 +9,7 @@ import type { WalletDetails, WalletPosition } from "./types";
 import type { CapitalSnapshot } from "./capital";
 import { positionTier, type PositionTier } from "./position-tier";
 import { WalletManager } from "./WalletManager";
+import { WalletLeaderboard } from "./WalletLeaderboard";
 import {
   getBrowserStorage,
   readJson,
@@ -511,6 +512,18 @@ function Position({ position }: { position: WalletPosition }) {
   );
 }
 
+function WalletTags({ tags }: { tags: string[] }) {
+  return tags.length ? (
+    <span className="whale-tags">
+      {tags.map((tag) => (
+        <span className="whale-tag" key={tag}>
+          {tag}
+        </span>
+      ))}
+    </span>
+  ) : null;
+}
+
 function WalletCard({
   address,
   name,
@@ -521,6 +534,7 @@ function WalletCard({
   showFavoriteButton = true,
   alertsEnabled,
   onManageAlerts,
+  tags,
 }: {
   address: string;
   name: string;
@@ -531,6 +545,7 @@ function WalletCard({
   showFavoriteButton?: boolean;
   alertsEnabled: boolean;
   onManageAlerts: () => void;
+  tags: string[];
 }) {
   const details = query.data;
   const cardRef = useRef<HTMLElement>(null);
@@ -580,6 +595,7 @@ function WalletCard({
               />
             </div>
             <code title={address}>{address}</code>
+            <WalletTags tags={tags} />
             {capital && (
               <span className="whale-capital-snapshot">
                 Capital {money(capital.valueUsd)} · snapshot{" "}
@@ -766,6 +782,7 @@ function WalletListRow({
   onToggleFavorite,
   alertsEnabled,
   onManageAlerts,
+  tags,
 }: {
   address: string;
   name: string;
@@ -775,6 +792,7 @@ function WalletListRow({
   onToggleFavorite: () => void;
   alertsEnabled: boolean;
   onManageAlerts: () => void;
+  tags: string[];
 }) {
   const account = query.data?.account;
   const pnl = openPnl(account?.positions);
@@ -793,6 +811,7 @@ function WalletListRow({
               />
             </span>
             <code title={address}>{address}</code>
+            <WalletTags tags={tags} />
           </span>
           <span className="whale-list-cell">
             <small>Open positions</small>
@@ -831,6 +850,7 @@ function WalletListRow({
             showFavoriteButton={false}
             alertsEnabled={alertsEnabled}
             onManageAlerts={onManageAlerts}
+            tags={tags}
           />
         </div>
       </details>
@@ -853,6 +873,7 @@ function WalletListRow({
 
 export function WalletTrackingPage() {
   const [managerOpen, setManagerOpen] = useState(false);
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const [alertWallet, setAlertWallet] = useState<string | undefined>();
   const [view, setView] = useState<"cards" | "list">("cards");
   const [page, setPage] = useState(0);
@@ -958,6 +979,11 @@ export function WalletTrackingPage() {
       name.toLowerCase().includes(searchTerm) ||
       address.includes(searchTerm) ||
       Boolean(
+        status.data?.walletTags?.[address]?.some((tag) =>
+          tag.toLowerCase().includes(searchTerm),
+        ),
+      ) ||
+      Boolean(
         account?.positions.some((position) =>
           position.coin.toLowerCase().includes(searchTerm),
         ),
@@ -1047,6 +1073,28 @@ export function WalletTrackingPage() {
           tier={selectedTier}
         />
       )}
+      {status.data && (
+        <>
+          <button
+            className="wallet-leaderboard-trigger"
+            type="button"
+            aria-expanded={leaderboardOpen}
+            aria-controls="wallet-leaderboard-content"
+            onClick={() => setLeaderboardOpen((open) => !open)}
+          >
+            {leaderboardOpen ? "Hide" : "Show"} wallet leaderboard
+          </button>
+          <div id="wallet-leaderboard-content" hidden={!leaderboardOpen}>
+            {leaderboardOpen && (
+              <WalletLeaderboard
+                key={wallets.join(",")}
+                addresses={wallets}
+                names={status.data.walletNames}
+              />
+            )}
+          </div>
+        </>
+      )}
       <div className="whale-info">
         Positions refresh about every minute while this page is open. Positions
         cover Hyperliquid’s main perpetuals market; margin value may not include
@@ -1108,7 +1156,7 @@ export function WalletTrackingPage() {
                 type="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="Search wallet, address or coin"
+                placeholder="Search wallet, address, tag or coin"
               />
             </label>
             <div
@@ -1190,6 +1238,7 @@ export function WalletTrackingPage() {
                   name={status.data.walletNames[address] ?? "Wallet"}
                   query={query}
                   capital={capital[address]}
+                  tags={status.data.walletTags?.[address] ?? []}
                   favorite={favorites.has(address.toLowerCase())}
                   onToggleFavorite={() => toggleFavorite(address)}
                   alertsEnabled={Boolean(status.data.walletAlerts?.[address])}
@@ -1209,6 +1258,7 @@ export function WalletTrackingPage() {
                   name={status.data.walletNames[address] ?? "Wallet"}
                   query={query}
                   capital={capital[address]}
+                  tags={status.data.walletTags?.[address] ?? []}
                   favorite={favorites.has(address.toLowerCase())}
                   onToggleFavorite={() => toggleFavorite(address)}
                   alertsEnabled={Boolean(status.data.walletAlerts?.[address])}

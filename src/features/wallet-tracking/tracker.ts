@@ -3,9 +3,11 @@ export interface TrackerStatus {
   walletNames: Record<string, string>;
   walletCapital?: Record<string, { valueUsd: number; asOf: string }>;
   walletAlerts?: Record<string, string>;
+  walletTags?: Record<string, string[]>;
 }
 
-import type { WalletDetails, WalletExtras } from "./types";
+import type { WalletDetails, WalletExtras, WalletWinRates } from "./types";
+import { validWalletTags } from "./tags";
 
 export async function getWalletDetails(
   address: string,
@@ -31,6 +33,19 @@ export async function getWalletExtras(
   if (!response.ok)
     throw new Error("Wallet history and orders are temporarily unavailable.");
   return response.json() as Promise<WalletExtras>;
+}
+
+export async function getWalletWinRates(
+  address: string,
+  signal: AbortSignal,
+): Promise<WalletWinRates> {
+  const response = await fetch(
+    `/api/wallet-tracking/win-rate?address=${encodeURIComponent(address)}`,
+    { signal },
+  );
+  if (!response.ok)
+    throw new Error("Trade history is temporarily unavailable.");
+  return response.json() as Promise<WalletWinRates>;
 }
 
 export async function getTrackerStatus(
@@ -62,6 +77,15 @@ export async function getTrackerStatus(
         name.length <= 100 &&
         !/\p{Cc}/u.test(name),
     ) ||
+    ("walletTags" in result &&
+      (!result.walletTags ||
+        typeof result.walletTags !== "object" ||
+        Array.isArray(result.walletTags) ||
+        !Object.entries(result.walletTags).every(
+          ([address, tags]) =>
+            (result.wallets as unknown[]).includes(address) &&
+            validWalletTags(tags),
+        ))) ||
     ("walletAlerts" in result &&
       (!result.walletAlerts ||
         typeof result.walletAlerts !== "object" ||

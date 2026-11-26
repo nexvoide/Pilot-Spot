@@ -42,6 +42,108 @@ afterEach(() => {
   localStorage.clear();
 });
 
+it("adds, edits, displays, and searches wallet tags", async () => {
+  const other = `0x${"b".repeat(40)}`;
+  let wallets = [address];
+  let walletNames: Record<string, string> = { [address]: "Aguila" };
+  let walletTags: Record<string, string[]> = {};
+  vi.stubGlobal(
+    "fetch",
+    vi.fn().mockImplementation((url: string, options?: RequestInit) => {
+      if (url === "/api/wallet-manager/status")
+        return Promise.resolve(
+          Response.json({ configured: true, authenticated: true }),
+        );
+      if (url === "/api/wallet-manager/wallets" && options?.method === "POST") {
+        const body = JSON.parse(String(options.body));
+        expect(body.tags).toEqual(["Smart Money", "Market Maker"]);
+        wallets = [address, other];
+        walletNames = { [address]: "Aguila", [other]: "New trader" };
+        walletTags = { [other]: body.tags };
+      }
+      if (url === "/api/wallet-manager/tags") {
+        const body = JSON.parse(String(options?.body));
+        walletTags = { ...walletTags, [body.address]: body.tags };
+      }
+      if (url.startsWith("/api/wallet-tracking/details"))
+        return Promise.resolve(
+          Response.json({
+            updatedAt: 100,
+            account: {
+              accountValue: 1,
+              marginUsed: 1,
+              positionValue: 1,
+              withdrawable: 0,
+              positions: [position("BTC", 1)],
+            },
+            portfolio: null,
+            orders: [],
+          }),
+        );
+      return Promise.resolve(
+        Response.json({ wallets, walletNames, walletTags }),
+      );
+    }),
+  );
+  renderPage();
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Manage wallets" }),
+  );
+  const dialog = screen.getByRole("dialog", { name: "Manage wallets" });
+  fireEvent.change(await within(dialog).findByLabelText("Wallet name"), {
+    target: { value: "New trader" },
+  });
+  fireEvent.change(within(dialog).getByLabelText("Wallet address"), {
+    target: { value: other },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", {
+      name: "Add Smart Money to New wallet tags",
+    }),
+  );
+  fireEvent.click(
+    within(dialog).getByRole("button", {
+      name: "Add Market Maker to New wallet tags",
+    }),
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Add wallet" }));
+  await within(dialog).findByText("New trader");
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Edit tags for Aguila" }),
+  );
+  fireEvent.change(within(dialog).getByLabelText("Tags for Aguila"), {
+    target: { value: "Patient trader" },
+  });
+  fireEvent.click(
+    within(dialog).getAllByRole("button", { name: "Add tag" })[1],
+  );
+  fireEvent.click(within(dialog).getByRole("button", { name: "Save tags" }));
+  await waitFor(() =>
+    expect(
+      within(dialog).queryByRole("button", { name: "Save tags" }),
+    ).not.toBeInTheDocument(),
+  );
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Close wallet manager" }),
+  );
+  expect(screen.getByText("Patient trader")).toBeVisible();
+  expect(screen.getByText("Market Maker")).toBeVisible();
+  fireEvent.change(
+    screen.getByRole("searchbox", { name: "Search wallets or coins" }),
+    { target: { value: "patient" } },
+  );
+  expect(screen.getAllByRole("article")).toHaveLength(1);
+  expect(screen.getByRole("heading", { name: "Aguila" })).toBeVisible();
+  fireEvent.click(screen.getByRole("button", { name: "List" }));
+  expect(
+    within(
+      screen
+        .getByRole("list", { name: "Wallet list" })
+        .querySelector("summary")!,
+    ).getByText("Patient trader"),
+  ).toBeVisible();
+});
+
 it("unlocks and changes WhatsApp alerts for the selected wallet", async () => {
   let unlocked = false;
   let enabled = false;

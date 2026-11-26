@@ -14,6 +14,7 @@ describe('Vercel nested API routes', () => {
 
   it.each([
     [walletTrackingHandler, 'GET', '/api/wallet-tracking/details?address=0x123'],
+    [walletTrackingHandler, 'GET', '/api/wallet-tracking/win-rate?address=0x123'],
     [walletDetailsHandler, 'GET', '/api/wallet-tracking/details/extras?address=0x123'],
     [walletManagerHandler, 'GET', '/api/wallet-manager/status'],
     [walletManagerHandler, 'POST', '/api/wallet-manager/unlock'],

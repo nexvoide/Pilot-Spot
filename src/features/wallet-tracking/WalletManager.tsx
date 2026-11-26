@@ -1,6 +1,101 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import type { TrackerStatus } from "./tracker";
+import {
+  MAX_WALLET_TAGS,
+  MAX_WALLET_TAG_LENGTH,
+  SUGGESTED_WALLET_TAGS,
+  validWalletTags,
+} from "./tags";
+
+function TagEditor({
+  label,
+  tags,
+  onChange,
+  disabled,
+}: {
+  label: string;
+  tags: string[];
+  onChange: (tags: string[]) => void;
+  disabled: boolean;
+}) {
+  const [input, setInput] = useState("");
+  const [error, setError] = useState("");
+  function add(value: string) {
+    const tag = value.trim();
+    if (!validWalletTags([...tags, tag])) {
+      setError("Use up to 3 unique tags of 24 characters or fewer.");
+      return;
+    }
+    onChange([...tags, tag]);
+    setInput("");
+    setError("");
+  }
+  return (
+    <div className="wallet-tag-editor">
+      <span className="wallet-tag-label">
+        {label} · {tags.length}/{MAX_WALLET_TAGS}
+      </span>
+      <div className="wallet-tag-chips">
+        {tags.map((tag) => (
+          <button
+            key={tag}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(tags.filter((item) => item !== tag))}
+            aria-label={`Remove ${tag} from ${label}`}
+          >
+            {tag} <span aria-hidden="true">×</span>
+          </button>
+        ))}
+      </div>
+      <div className="wallet-tag-input">
+        <input
+          aria-label={label}
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          maxLength={MAX_WALLET_TAG_LENGTH}
+          placeholder="Add a custom tag"
+          disabled={disabled || tags.length >= MAX_WALLET_TAGS}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+              add(input);
+            }
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => add(input)}
+          disabled={disabled || !input.trim() || tags.length >= MAX_WALLET_TAGS}
+        >
+          Add tag
+        </button>
+      </div>
+      <div className="wallet-tag-suggestions">
+        {SUGGESTED_WALLET_TAGS.filter(
+          (tag) =>
+            !tags.some((item) => item.toLowerCase() === tag.toLowerCase()),
+        ).map((tag) => (
+          <button
+            type="button"
+            key={tag}
+            disabled={disabled || tags.length >= MAX_WALLET_TAGS}
+            aria-label={`Add ${tag} to ${label}`}
+            onClick={() => add(tag)}
+          >
+            + {tag}
+          </button>
+        ))}
+      </div>
+      {error && (
+        <small className="wallet-tag-error" role="alert">
+          {error}
+        </small>
+      )}
+    </div>
+  );
+}
 
 class ManagerError extends Error {
   constructor(
@@ -54,6 +149,9 @@ export function WalletManager({
   const [pin, setPin] = useState("");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [newTags, setNewTags] = useState<string[]>([]);
+  const [editingWallet, setEditingWallet] = useState<string | null>(null);
+  const [editedTags, setEditedTags] = useState<string[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -135,10 +233,11 @@ export function WalletManager({
     void action(async () => {
       const updated = await request("/wallets", {
         method: "POST",
-        body: JSON.stringify({ name, address }),
+        body: JSON.stringify({ name, address, tags: newTags }),
       });
       setName("");
       setAddress("");
+      setNewTags([]);
       if (
         !updated ||
         typeof updated !== "object" ||
@@ -152,6 +251,27 @@ export function WalletManager({
           "Wallet was added, but the list could not be refreshed.",
         );
       queryClient.setQueryData(["wallet-tracking"], updated);
+    });
+  }
+
+  function saveTags(wallet: string) {
+    void action(async () => {
+      const updated = await request("/tags", {
+        method: "POST",
+        body: JSON.stringify({ address: wallet, tags: editedTags }),
+      });
+      if (
+        !updated ||
+        typeof updated !== "object" ||
+        !("walletTags" in updated) ||
+        !updated.walletTags ||
+        typeof updated.walletTags !== "object" ||
+        !("wallets" in updated) ||
+        !Array.isArray(updated.wallets)
+      )
+        throw new Error("Wallet tags could not be refreshed.");
+      queryClient.setQueryData(["wallet-tracking"], updated);
+      setEditingWallet(null);
     });
   }
 
@@ -351,6 +471,12 @@ export function WalletManager({
                   required
                 />
               </label>
+              <TagEditor
+                label="New wallet tags"
+                tags={newTags}
+                onChange={setNewTags}
+                disabled={pending}
+              />
               <button type="submit" disabled={pending}>
                 Add wallet
               </button>
@@ -378,9 +504,25 @@ export function WalletManager({
                   <div>
                     <strong>{status.walletNames[wallet] ?? "Wallet"}</strong>
                     <code>{wallet}</code>
+                    {status.walletTags?.[wallet]?.length ? (
+                      <span className="wallet-manager-tags">
+                        {status.walletTags[wallet].join(" · ")}
+                      </span>
+                    ) : null}
                   </div>
                   <div className="wallet-manager-actions">
                     {wallet !== alertWallet && alertButton(wallet)}
+                    <button
+                      type="button"
+                      disabled={pending}
+                      onClick={() => {
+                        setEditingWallet(wallet);
+                        setEditedTags(status.walletTags?.[wallet] ?? []);
+                      }}
+                      aria-label={`Edit tags for ${status.walletNames[wallet] ?? wallet}`}
+                    >
+                      Edit tags
+                    </button>
                     {confirmDelete === wallet ? (
                       <div className="wallet-manager-actions">
                         <button
@@ -410,6 +552,33 @@ export function WalletManager({
                       </button>
                     )}
                   </div>
+                  {editingWallet === wallet && (
+                    <div className="wallet-tag-edit-panel">
+                      <TagEditor
+                        key={wallet}
+                        label={`Tags for ${status.walletNames[wallet] ?? wallet}`}
+                        tags={editedTags}
+                        onChange={setEditedTags}
+                        disabled={pending}
+                      />
+                      <div className="wallet-manager-actions">
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => saveTags(wallet)}
+                        >
+                          Save tags
+                        </button>
+                        <button
+                          type="button"
+                          disabled={pending}
+                          onClick={() => setEditingWallet(null)}
+                        >
+                          Cancel editing tags
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>

@@ -31,6 +31,19 @@ vi.mock("./wallet-storage.js", () => ({
       return count;
     }
     const raw = fake.data.get(key) ?? String(command[4]);
+    if (String(command[1]).includes("wallet.tags")) {
+      const list = JSON.parse(raw) as Array<{
+        address: string;
+        tags?: string[];
+      }>;
+      const wallet = list.find((item) => item.address === command[5]);
+      if (!wallet) return "missing";
+      const tags = JSON.parse(String(command[6])) as string[];
+      if (tags.length) wallet.tags = tags;
+      else delete wallet.tags;
+      fake.data.set(key, JSON.stringify(list));
+      return "ok";
+    }
     if (String(command[1]).includes("wallet.alertVersion")) {
       const list = JSON.parse(raw) as Array<{
         address: string;
@@ -318,6 +331,72 @@ it("requires an authenticated session to change per-wallet alerts", async () => 
       })
     ).code,
   ).toBe(400);
+});
+
+it("saves and edits wallet tags with the manager PIN and validates them", async () => {
+  const address = `0x${"a".repeat(40)}`;
+  const tags = ["Smart Money", "Market Maker"];
+  expect(
+    (
+      await call("/api/wallet-manager/tags", {
+        method: "POST",
+        body: { address, tags },
+      })
+    ).code,
+  ).toBe(401);
+  const login = await call("/api/wallet-manager/unlock", {
+    method: "POST",
+    body: { pin: "73928364" },
+  });
+  const cookie = login.headers["set-cookie"].split(";")[0];
+  const added = await call("/api/wallet-manager/wallets", {
+    method: "POST",
+    cookie,
+    body: { address, name: "Trader", tags },
+  });
+  expect((added.data.walletTags as Record<string, string[]>)[address]).toEqual(
+    tags,
+  );
+  expect(
+    (
+      (await call("/api/wallet-tracking")).data.walletTags as Record<
+        string,
+        string[]
+      >
+    )[address],
+  ).toEqual(tags);
+  const updated = await call("/api/wallet-manager/tags", {
+    method: "POST",
+    cookie,
+    body: { address, tags: ["Custom"] },
+  });
+  expect(
+    (updated.data.walletTags as Record<string, string[]>)[address],
+  ).toEqual(["Custom"]);
+  for (const invalid of [
+    ["A", "B", "C", "D"],
+    ["Smart", "smart"],
+    [""],
+    ["x".repeat(25)],
+    ["bad\nname"],
+    "bad",
+  ]) {
+    expect(
+      (
+        await call("/api/wallet-manager/tags", {
+          method: "POST",
+          cookie,
+          body: { address, tags: invalid },
+        })
+      ).code,
+    ).toBe(400);
+  }
+  const cleared = await call("/api/wallet-manager/tags", {
+    method: "POST",
+    cookie,
+    body: { address, tags: [] },
+  });
+  expect(cleared.data.walletTags).toEqual({});
 });
 
 it("limits PIN attempts and invalidates sessions when the PIN changes", async () => {

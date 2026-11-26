@@ -74,7 +74,7 @@ Strategy thresholds and calculation rules are documented in [STRATEGY.md](./STRA
 
 ## Wallet tracking
 
-The dashboard initially uses the 12 wallets in [`src/features/wallet-tracking/wallets.ts`](./src/features/wallet-tracking/wallets.ts), including Abraxas Solo and Abraxas Duo. Once configured, **Manage wallets** requires a PIN before adding or deleting wallets. Changes are stored in shared Redis and become visible to other visitors, without editing code. The public tracking list refreshes about every 30 seconds; wallet positions refresh about every minute.
+The dashboard initially uses the 12 wallets in [`src/features/wallet-tracking/wallets.ts`](./src/features/wallet-tracking/wallets.ts), including Abraxas Solo and Abraxas Duo. Once configured, **Manage wallets** requires a PIN before adding or deleting wallets. Add up to three suggested or custom tags when adding a wallet, or use **Edit tags** for an existing wallet. Tags appear in card and list views and can be searched. Changes are stored in shared Redis and become visible to other visitors, without editing code. The public tracking list refreshes about every 30 seconds; wallet positions refresh about every minute.
 
 To enable shared wallet management:
 
@@ -85,6 +85,8 @@ To enable shared wallet management:
 The first shared-storage access initializes the list with the 12 wallets already in the code; later restarts and deployments do not overwrite changes. Use separate databases for environments that should not share a list. Without database configuration, the original read-only list remains available. If a configured database is unavailable, the tracker reports an error instead of replacing the shared list with the original wallets. Without a configured PIN, wallet changes are disabled. PIN attempts are limited, and sessions use an HTTP-only cookie and expire after 30 minutes.
 
 The dashboard retrieves main-market perpetual positions and margin from Hyperliquid's public API. Positions refresh about once a minute while the page is open. Order and P&L history loads when a card becomes visible and is cached for five minutes. Account margin values may not represent unified or spot balances, and other perpetual DEX markets are not included. The market summary counts wallets with open long and short positions. Background alerts are optional and require the setup below.
+
+The on-demand wallet leaderboard compares the wallets on the current page over 7 or 30 days. It counts fully observed main-market perpetual position cycles that closed in the selected period; partial closes are combined and a reversal starts a new cycle. Win rate is wins divided by wins plus losses, based on gross closed trading P&L before fees and funding. Break-even positions are shown separately. Hyperliquid returns at most 2,000 recent fills, so older or incomplete cycles are excluded; multiple fills on the same market and timestamp are skipped when their order cannot be established. The result is a sample, not a complete trading history. Wallets are loaded gradually to reduce exchange rate-limit pressure.
 
 ### Optional WhatsApp group alerts
 

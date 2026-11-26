@@ -7,7 +7,11 @@ import {
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { ApiError } from "./errors.js";
 import { isLocalRequest } from "./local-access.js";
-import { changeWallet, setWalletAlert } from "./wallet-tracking.js";
+import {
+  changeWallet,
+  setWalletAlert,
+  setWalletTags,
+} from "./wallet-tracking.js";
 import { redis, storageConfigured } from "./wallet-storage.js";
 
 const COOKIE = "spot_wallet_session";
@@ -186,6 +190,15 @@ export async function handleWalletManager(
       "MANAGER_LOCKED",
     );
   if (
+    url.pathname === "/api/wallet-manager/tags" &&
+    request.method === "POST"
+  ) {
+    const input = await body(request);
+    if (typeof input.address !== "string")
+      throw new ApiError("Enter a wallet address.", 400, "INVALID_BODY");
+    return setWalletTags(input.address.trim().toLowerCase(), input.tags);
+  }
+  if (
     url.pathname === "/api/wallet-manager/alerts" &&
     request.method === "POST"
   ) {
@@ -223,6 +236,7 @@ export async function handleWalletManager(
       "add",
       input.address.trim().toLowerCase(),
       input.name.trim(),
+      input.tags === undefined ? [] : input.tags,
     );
   }
   if (

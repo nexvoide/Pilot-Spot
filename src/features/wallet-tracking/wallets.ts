@@ -3,6 +3,7 @@ export interface TrackedWallet {
   address: string;
   capitalSnapshot?: { valueUsd: number; asOf: string };
   alertVersion?: string;
+  tags?: string[];
 }
 
 // Capital values are historical snapshots; absent values have not been verified.

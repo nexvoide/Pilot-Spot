@@ -40,3 +40,12 @@ export interface WalletExtras {
   portfolio: WalletDetails["portfolio"];
   orders: WalletDetails["orders"];
 }
+
+export interface WalletWinRates {
+  updatedAt: number;
+  historyLimited: boolean;
+  periods: Record<
+    "7d" | "30d",
+    { wins: number; losses: number; breakeven: number; winRate: number | null }
+  >;
+}
