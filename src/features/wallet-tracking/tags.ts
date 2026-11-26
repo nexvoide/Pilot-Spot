@@ -3,7 +3,7 @@ export const MAX_WALLET_TAG_LENGTH = 24;
 export const SUGGESTED_WALLET_TAGS = [
   "Smart Money",
   "Market Maker",
-  "High Conviction",
+  "Insider",
 ] as const;
 
 export function validWalletTags(value: unknown): value is string[] {
